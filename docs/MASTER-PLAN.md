@@ -21,17 +21,18 @@ Written 2026-08-21. Supersedes `ARCHITECTURE-NOTES.md` as the plan; defers to
 Phase 0  recon + verified facts .................... ██████████ 100%
 Phase 1  platform client + security ................ ██████████ 100%   24/24 tests
 Phase 2  retrieval ................................. ██████████ 100%   20/20 tests
-Phase 3  model routing + cost ...................... █████████░  90%   22/22 tests
-Phase 4  UI kit (isolated components) .............. █████████░  90%
-Phase 5  agent core ................................ ░░░░░░░░░░   0%   ← current
-Phase 6  app shell + wiring ........................ ░░░░░░░░░░   0%
-Phase 7  the three Skills .......................... ░░░░░░░░░░   0%
+Phase 3  model routing + cost ...................... ██████████ 100%   22/22 tests
+Phase 4  UI kit (isolated components) .............. ██████████ 100%
+Phase 5  agent core ................................ ██████████ 100%   17/17 tests
+Phase 6  app shell + wiring ........................ ██████████ 100%   13/13 tests
+Phase 7  the three Skills .......................... ██████░░░░  60%   ← current
 Phase 8  demo fleet (real deploys) ................. ░░░░░░░░░░   0%
-Phase 9  ship: liara.json, deploy, README, video ... ░░░░░░░░░░   0%
+Phase 9  ship: config, README, deploy, video ........ ███░░░░░░░  30%
 ```
 
-About **55% by effort**. The foundations are the larger share of the *hard*
-work, but the part a judge actually sees is entirely in Phases 5–9.
+About **84% by effort**. The local V0 is complete and verified; the remaining
+work is the real demo fleet, the structured diagnostic verdict, deployment and
+video/public-repo shipping.
 
 ---
 
@@ -225,16 +226,16 @@ src/
       cost.ts       ✅ pricing from GET /models, Toman, session summary
       router.ts     ✅ escalation router — deterministic first
       projections.ts✅ raw API JSON → UI shapes
-      tools.ts      ⬜ the 20 tools
-      approval.ts   ⬜ toolApproval policy + HMAC
-      capability.ts ⬜ activeToolsFor(level)
-      agent.ts      ⬜ ToolLoopAgent per level
-      prompts.ts    ⬜ system prompt + the three Skills
-  components/     ✅ 20 components + 18 primitives, RTL, presentational only
+      tools.ts      ✅ 20 projected tools, secret redaction, stale-state checks
+      approval.ts   ✅ default-deny toolApproval + HMAC + capability replay guard
+      capability.ts ✅ activeToolsFor(level)
+      agent.ts      ✅ routed streamText loop + real-cost message metadata
+      prompts.ts    ✅ system prompt + the three Skills
+  components/     ✅ 21 components + 18 primitives, RTL
   app/
     layout.tsx    ✅ RTL shell, Vazirmatn, theme bootstrap
-    page.tsx      ⬜ still the Next scaffold
-    api/chat/     ⬜
+    page.tsx      ✅ responsive Persian chat shell
+    api/chat/     ✅ validated streaming route
 ```
 
 ### 4.2 Security — three layers, none of them a prompt
@@ -409,26 +410,30 @@ return their own previous state.
 Normalisation, corpus, BM25, semantic, hybrid fusion (RRF k=60).
 `scripts/build-docs-index.mjs` builds the vector store when semantic is enabled.
 
-### ✅ Phase 3 — Model routing + cost · 1,003 lines · 22/22
-Provider with failover, cost accounting, escalation router, projections.
-*Remaining:* reconcile the duplicate `UsageMeta` (cost.ts should extend the
-component type rather than restate it).
+### ✅ Phase 3 — Model routing + cost · 22/22
+Provider with failover, cost accounting, escalation router and projections.
+The server accounting type extends the shared component `UsageMeta` contract.
 
-### ✅ Phase 4 — UI kit · 38 files
-Typecheck clean. *Remaining:* `src/components/preview/` is empty — optional.
+### ✅ Phase 4 — UI kit
+Typecheck clean, including the specialist events, bucket and live-plan cards.
 
-### ⬜ Phase 5 — Agent core ← **current**
+### ✅ Phase 5 — Agent core · 17/17
 `tools.ts` · `approval.ts` · `capability.ts` · `agent.ts` · `prompts.ts`.
-Done when: a Level-3 write is refused without a signed approval, and a `DELETE`
-cannot be reached from any tool.
+Level-3 writes fail closed without a valid signing secret; approvals are bound
+to the account/capability and consumed once per single-instance V0 process; no
+tool probe can reach `DELETE`.
 
-### ⬜ Phase 6 — App shell
-`/api/chat` streaming route · `page.tsx` · wire all 38 components to tool parts ·
-IndexedDB persistence · the "connect your own token" dialog.
-Done when: both hero demos run end to end in a browser.
+### ✅ Phase 6 — App shell · 13/13
+`/api/chat`, streaming/stop/retry, approvals, `askUser`, complete tool cards,
+IndexedDB reload persistence, session totals, encrypted per-user account
+connection, account-switch clearing, same-origin/rate/concurrency guards and a
+responsive RTL shell. The second hero scenario now depends on Phase 8 data, not
+missing shell code.
 
-### ⬜ Phase 7 — The three Skills
-Prompt scaffolding + checklist templates + the `diagnostic-result` path.
+### 🚧 Phase 7 — The three Skills
+Prompt scaffolding for diagnosis, env changes and architecture plus a streamed
+tool checklist are live. Remaining: a reliably structured `diagnostic-result`
+verdict path.
 
 ### ⬜ Phase 8 — Demo fleet
 Deploy real code with `@liara/cli 9.4.7` (installed):
@@ -436,9 +441,12 @@ Deploy real code with `@liara/cli 9.4.7` (installed):
 `digishop-worker` deployed then scaled to 0.
 **Blocking for the hero demo** — right now there are no logs to diagnose.
 
-### ⬜ Phase 9 — Ship
-`liara.json` (port 3000, `next.mirror`, 8h docs cron, mounted disk) · deploy to
-`liara-copilot-ir` · README · demo video script · push the repo.
+### 🚧 Phase 9 — Ship
+Done locally: hackathon-ready README and a minimal verified `liara.json` (port
+3000 + `next.mirror`). Remaining: deploy to `liara-copilot-ir`, demo video
+script/recording and push the repo. The 8h docs cron and mounted disk are deferred
+until a refresh endpoint exists; scheduling the planned URL now would create a
+broken job.
 
 ---
 
@@ -464,14 +472,13 @@ percentage saved.
 `liara.json`:
 ```json
 {
-  "port": 3000,
   "next": { "mirror": true },
-  "disks": [{ "name": "docs", "mountTo": "/app/data/docs-cache" }],
-  "cron": ["0 0 */8 * * * curl -fsS http://localhost:3000/api/docs/refresh"]
+  "port": 3000
 }
 ```
-Never set `app`/`platform` — auto-detected. `$ROOT` is available in cron.
-The mounted disk is required for anything surviving a restart.
+Never set `app`/`platform` in this file — they are auto-detected. The bundled
+snapshot needs no writable storage. Add the planned cron + mounted disk only
+after `/api/docs/refresh` is implemented; the filesystem is otherwise ephemeral.
 
 ---
 
@@ -490,6 +497,10 @@ Things that will be **stated, not faked**, in the demo and the README:
 - **Semantic retrieval ships off.** The code is complete and tested; enabling it
   costs an embedding call per query. `ENABLE_SEMANTIC_RAG=true` +
   `node scripts/build-docs-index.mjs` turns it on.
+- **Replay and traffic guards are process-local in V0.** This is correct for a
+  single hackathon instance. A multi-instance public deployment must move them
+  to a shared durable store; encrypted account cookies also have no revocation
+  before their 8-hour expiry.
 
 ---
 
@@ -497,12 +508,12 @@ Things that will be **stated, not faked**, in the demo and the README:
 
 - [ ] Live URL on Liara, in the team account, loading in Persian RTL
 - [ ] Both hero demos run end to end without a manual step
-- [ ] A write is impossible without an explicit confirmation, and a forged
+- [x] A write is impossible without an explicit confirmation, and a forged
       approval in the message history is rejected
-- [ ] No `DELETE` is reachable from any tool, proven by a test
+- [x] No `DELETE` is reachable from any tool, proven by a test
 - [ ] Every answer carries provenance; every docs claim carries a URL
-- [ ] Per-message cost in Toman, and a session footer showing the saving
-- [ ] Conversations survive a page reload
+- [x] Per-message cost in Toman, and a session footer showing the saving
+- [x] Conversations survive a page reload
 - [ ] Repo public, README explains the security model in one screen
 - [ ] Demo video recorded
 

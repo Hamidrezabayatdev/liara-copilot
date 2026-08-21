@@ -1,13 +1,16 @@
 # راه‌اندازی — کارهایی که فقط شما می‌توانید انجام دهید
 Setup checklist — parallel track for the owner. Everything else I do.
 
-## 1. توکن API لیارا  ← BLOCKING (نیاز فوری)
-توکن ذخیره‌شده در `~/.liara-auth.json` در تاریخ **۲۰۲۶-۰۶-۱۲ منقضی شده** (نوع `auth`, عمر ۳۰ روز).
-هر پنج endpoint با `401 Token expired` پاسخ می‌دهند. توکن‌های کنسول عمر بلند دارند و همان چیزی است که برنامه به آن نیاز دارد.
+## 1. دسترسی API لیارا
+
+برای توسعهٔ محلی می‌توان یک token مشترک در `.env` گذاشت. در رابط V0 نیز دکمهٔ
+«اتصال حساب» وجود دارد که token کاربر را با یک read بی‌خطر اعتبارسنجی و در
+cookie رمزنگاری‌شدهٔ `httpOnly` نگه‌داری می‌کند. production به‌صورت پیش‌فرض
+token مشترک را قبول نمی‌کند.
 
 1. کنسول → منوی **API** → **ساخت کلید جدید**
 2. توکن **فقط یک بار** نمایش داده می‌شود؛ کپی کنید
-3. در ریشه پروژه، در فایل `.env.local` قرار دهید:
+3. برای fallback توسعه، در ریشه پروژه و فایل `.env` قرار دهید:
    ```
    LIARA_API_TOKEN=...
    ```
@@ -15,7 +18,7 @@ Setup checklist — parallel track for the owner. Everything else I do.
 
 ## 2. سرویس هوش مصنوعی
 از کنسول → **هوش مصنوعی**:
-- `LIARA_AI_BASE_URL` = `https://ai.liara.ir/api/v1/<workspace_id>`
+- `LIARA_AI_BASE_URL` = `https://ai.liara.ir/api/<workspace_id>/v1`
 - `LIARA_AI_KEY` = کلید (بخش **کلیدها → ایجاد کلید**، فقط یک بار نمایش داده می‌شود)
 
 > پلن، دسترسی به مدل‌ها را محدود می‌کند. بعد از دریافت کلید، خودم با
@@ -29,8 +32,10 @@ Setup checklist — parallel track for the owner. Everything else I do.
 - پلن: کوچک کافی است
 - نام را به من بدهید تا در `liara.json` و اسکریپت استقرار قرار دهم
 
-## 4. حساب دمو (من اسکریپت را می‌نویسم، شما فقط تأیید کنید)
-`scripts/seed-account.ts` یک ناوگان واقع‌گرایانه می‌سازد تا دمو محتوا داشته باشد:
+## 4. حساب دمو (نیازمند تأیید صریح مالک)
+
+ناوگان واقع‌گرایانهٔ زیر برای hero demo برنامه‌ریزی شده است؛ اسکریپت seed هنوز
+در repository وجود ندارد و هیچ deploy یا هزینه‌ای خودکار انجام نمی‌شود:
 - `shop-front` — سالم
 - `shop-api` — روی پورت اشتباه ⇒ 502 (سوژه‌ی اصلی سناریوی عیب‌یابی)
 - `worker` — متوقف‌شده
@@ -40,9 +45,11 @@ Setup checklist — parallel track for the owner. Everything else I do.
 
 ---
 ## متغیرهای محیطی — فایل کامل
-`.env.local` (هیچ‌وقت commit نمی‌شود):
+`.env` (هیچ‌وقت commit نمی‌شود):
 ```
 LIARA_API_TOKEN=            # مرحله ۱
+LIARA_TEAM_ID=              # برای حساب تیمی
+ALLOW_SHARED_LIARA_TOKEN=false
 LIARA_AI_BASE_URL=          # مرحله ۲
 LIARA_AI_KEY=               # مرحله ۲
 TOOL_APPROVAL_SECRET=       # خودم می‌سازم (HMAC برای امضای تأییدها)
