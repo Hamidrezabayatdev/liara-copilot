@@ -14,9 +14,75 @@ const { loadCorpus } = (await import(
 const { bm25Search, keywordConfidence } = (await import(
   new URL('bm25.ts', import.meta.url).href
 )) as typeof import('./bm25');
-const { searchDocs } = (await import(
+const { dedupeNearDuplicateHits, searchDocs, selectRelevantHits } = (await import(
   new URL('index.ts', import.meta.url).href
 )) as typeof import('./index');
+
+function scoredHits(scores: number[]) {
+  return scores.map((score, index) => ({ id: String(index), score }));
+}
+
+function docsHit(overrides: Partial<import('./bm25').Hit>): import('./bm25').Hit {
+  return {
+    id: crypto.randomUUID(),
+    docId: crypto.randomUUID(),
+    title: 'اتصال به PostgreSQL',
+    section: 'اتصال به PostgreSQL',
+    text: 'برای اتصال به دیتابیس PostgreSQL از متغیر محیطی و connection pooling استفاده کنید.',
+    url: 'https://docs.liara.ir/dbaas/postgresql/connect/',
+    score: 1,
+    ...overrides,
+  };
+}
+
+test('adaptive cutoff keeps only a dominant documentation result', () => {
+  const selected = selectRelevantHits(scoredHits([100, 33, 32, 17, 17]), {
+    maxResults: 5,
+  });
+  assert.deepEqual(selected.map(({ score }) => score), [100]);
+});
+
+test('adaptive cutoff keeps the useful cluster before the score elbow', () => {
+  const selected = selectRelevantHits(scoredHits([80, 70, 50, 23, 12]), {
+    maxResults: 5,
+  });
+  assert.deepEqual(selected.map(({ score }) => score), [80, 70, 50]);
+});
+
+test('flat rankings use the cap instead of an arbitrary early cutoff', () => {
+  const selected = selectRelevantHits(scoredHits([100, 80, 60, 40, 20, 10]), {
+    maxResults: 6,
+  });
+  assert.deepEqual(selected.map(({ score }) => score), [100, 80, 60, 40]);
+});
+
+test('adaptive cutoff always keeps a winner for unusable score scales', () => {
+  assert.deepEqual(selectRelevantHits(scoredHits([0, 0, 0])).map(({ id }) => id), ['0']);
+  assert.deepEqual(selectRelevantHits(scoredHits([Number.NaN, 10])).map(({ id }) => id), ['0']);
+  assert.ok(selectRelevantHits(scoredHits([10, 9]), { maxResults: Number.NaN }).length > 0);
+});
+
+test('canonical duplicate replacement preserves the strongest ranking score', () => {
+  const wrongUrl = docsHit({
+    id: 'wrong-url',
+    url: 'https://docs.liara.ir/dbaas/elastic-search/connect/',
+    score: 100,
+  });
+  const distinct = docsHit({
+    id: 'distinct',
+    title: 'راه‌اندازی PostgreSQL',
+    section: 'راه‌اندازی PostgreSQL',
+    text: 'یک دیتابیس تازه بسازید و سپس وضعیت آماده بودن آن را در پنل بررسی کنید.',
+    url: 'https://docs.liara.ir/dbaas/postgresql/quick-setup/',
+    score: 90,
+  });
+  const canonical = docsHit({ id: 'canonical', score: 40 });
+
+  const selected = dedupeNearDuplicateHits([wrongUrl, distinct, canonical]);
+  assert.equal(selected[0].id, 'canonical');
+  assert.equal(selected[0].score, 100);
+  assert.ok(selected[0].score >= selected[1].score, 'dedupe must not break rank order');
+});
 
 test('the corpus parses into a usable number of chunks', async () => {
   const chunks = await loadCorpus();
@@ -76,6 +142,15 @@ test('one source is never shown three times', async () => {
   const hits = await bm25Search('دیتابیس PostgreSQL', 6);
   const docIds = hits.map((h) => h.docId);
   assert.equal(new Set(docIds).size, docIds.length, `duplicated docs: ${docIds.join(', ')}`);
+});
+
+test('copied snapshot pages do not surface under a mismatched product URL', async () => {
+  const result = await searchDocs('دیتابیس PostgreSQL', { limit: 6 });
+  assert.ok(result.hits.length > 0);
+  assert.ok(
+    result.hits.every((hit) => !hit.url.includes('/elastic-search/')),
+    `mismatched sources: ${result.hits.map((hit) => hit.url).join(', ')}`,
+  );
 });
 
 test('semantic search stays off unless explicitly enabled', async () => {

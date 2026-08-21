@@ -173,13 +173,25 @@ function requireEnv(name: string): string {
   return v;
 }
 
+/**
+ * Cost-aware defaults verified against the configured Liara `/models`
+ * catalogue. Keep the provider prefix: Liara expects `provider/model` ids.
+ */
+export const DEFAULT_MODELS = {
+  router: 'deepseek/deepseek-v4-flash',
+  answer: 'openai/gpt-5.6-luna',
+  reason: 'google/gemini-3.7-flash',
+  baseline: 'anthropic/claude-opus-5',
+  embed: 'intfloat/multilingual-e5-large',
+} as const;
+
 export const MODELS = {
-  router: () => process.env.MODEL_ROUTER ?? 'google/gemini-3.7-flash',
-  answer: () => process.env.MODEL_ANSWER ?? 'google/gemini-3.7-flash',
-  reason: () => process.env.MODEL_REASON ?? 'anthropic/claude-sonnet-5',
+  router: () => process.env.MODEL_ROUTER ?? DEFAULT_MODELS.router,
+  answer: () => process.env.MODEL_ANSWER ?? DEFAULT_MODELS.answer,
+  reason: () => process.env.MODEL_REASON ?? DEFAULT_MODELS.reason,
   /** only used to compute "what would this have cost on the big model" */
-  baseline: () => process.env.MODEL_BASELINE ?? 'anthropic/claude-opus-5',
-  embed: () => process.env.MODEL_EMBED ?? 'intfloat/multilingual-e5-large',
+  baseline: () => process.env.MODEL_BASELINE ?? DEFAULT_MODELS.baseline,
+  embed: () => process.env.MODEL_EMBED ?? DEFAULT_MODELS.embed,
 } as const;
 
 export type Tier = 'router' | 'answer' | 'reason';

@@ -25,7 +25,7 @@ export type ToolProbe =
       method: string;
       path: string;
     }
-  | { scope: 'local'; operation: 'searchDocs' }
+  | { scope: 'local'; operation: 'searchDocs' | 'reportDiagnosis' }
   | { scope: 'client'; operation: 'askUser' };
 
 /** Minimal structural contract expected on every trusted tool definition. */
@@ -231,7 +231,10 @@ function deriveKind(toolName: string, probe: unknown): OpKind | ApprovalDecision
   // client. Bind both the name and operation so another tool cannot borrow a
   // trusted local/client probe.
   if (probe.scope === 'local') {
-    return toolName === 'searchDocs' && probe.operation === 'searchDocs'
+    const matches =
+      (toolName === 'searchDocs' && probe.operation === 'searchDocs') ||
+      (toolName === 'reportDiagnosis' && probe.operation === 'reportDiagnosis');
+    return matches
       ? 'read'
       : deny(`Tool "${toolName}" does not match its local probe metadata.`);
   }

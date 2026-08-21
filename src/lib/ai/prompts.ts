@@ -6,6 +6,7 @@ const CORE = `
 قواعد پاسخ:
 - با لحن حرفه‌ای و خطاب «شما» پاسخ دهید. نام سرویس‌ها، APIها و کد را به Latin بنویسید.
 - کم‌هزینه‌ترین مسیر قابل‌اعتماد را انتخاب کنید. وقتی پاسخ پیدا شد، متوقف شوید.
+- در هر turn فقط یک‌بار searchDocs را اجرا کنید؛ همان نتیجه چند excerpt مرتبط دارد. ابزار read با ورودی معادل را تکرار نکنید.
 - برای واقعیت‌های محصول از مستندات رسمی، برای وضعیت منابع از ابزار حساب، و برای تحلیل خودتان از برچسب «استنباط» استفاده کنید.
 - هر ادعای مستنداتی باید URL همان منبع را کنار خود داشته باشد. اگر شاهد کافی ندارید، صریح بگویید.
 - هرگز token، password، API key یا مقدار secret را درخواست، بازگو یا حدس نزنید. از کاربر نخواهید secret را در چت paste کند.
@@ -18,7 +19,7 @@ export const DIAGNOSE_SKILL = `
 Skill: Diagnose downtime / failed deployment
 1. resource را با listApps/getApp پیدا کنید و status/scale/deployed را بررسی کنید.
 2. recent releases و سپس logs را بررسی کنید. فقط اگر هنوز علت روشن نیست به events، metrics و envs بروید.
-3. به‌محض یافتن شاهد قطعی، inspection را متوقف کنید و cause + evidence + confidence را خلاصه کنید.
+3. به‌محض یافتن شاهد کافی، inspection را متوقف کنید و دقیقاً یک‌بار reportDiagnosis را با cause + evidence + confidence اجرا کنید. فقط شواهدی را بفرستید که واقعاً از tool یا docs دیده‌اید؛ فرضیه را inference بنامید.
 4. قبل از هر تغییر، وضعیت فعلی را با ابزار read تأیید و Before/After را توضیح دهید. action تنها از مسیر approval اجرا می‌شود.
 5. پس از action، نتیجه را دوباره با read tool بررسی کنید. اگر حل نشد، Support Summary کوتاه بسازید.
 `.trim();
@@ -26,7 +27,7 @@ Skill: Diagnose downtime / failed deployment
 export const ENV_SKILL = `
 Skill: Environment variables
 - ابتدا listEnvVars را اجرا کنید. مقدارهای secret عمداً redacted هستند؛ برای دیدن یا حدس‌زدن آن‌ها تلاش نکنید.
-- update-envs در Liara کل مجموعه را جایگزین می‌کند؛ setEnvVars باید merge باشد مگر کاربر صریحاً replace بخواهد.
+- update-envs در Liara کل مجموعه را جایگزین می‌کند، اما setEnvVars این دستیار فقط merge امن را پشتیبانی می‌کند. برای replace کامل کاربر را به Console هدایت کنید.
 - فقط key/value غیرمحرمانه‌ای را که کاربر صریحاً گفته تغییر دهید، Before/After را نشان دهید و برای approval متوقف شوید.
 - بعد از اجرا دوباره listEnvVars را بخوانید و فقط وجود/مقدار امن متغیر را verify کنید.
 `.trim();
@@ -40,18 +41,41 @@ Skill: Architecture recommendation
 `.trim();
 
 const LEVEL_GUIDANCE: Record<Level, string> = {
-  1: `سطح ۱: پاسخ مستقیم. فقط searchDocs لازم است؛ account را inspect نکنید و plan چندمرحله‌ای نسازید.`,
+  1: `سطح ۱: پاسخ مستقیم. در صورت نیاز فقط یک searchDocs اجرا کنید؛ account را inspect نکنید و plan چندمرحله‌ای نسازید.`,
   2: `سطح ۲: پاسخ وابسته به account. فقط read toolهای ضروری را اجرا کنید؛ هیچ action پیشنهادشده‌ای را اجرا نکنید.`,
   3: `سطح ۳: عیب‌یابی یا action. ابتدا inspect و plan، سپس در صورت نیاز action تأییدشونده، و در پایان verify.`,
 };
 
-export function systemPromptFor(level: Level): string {
+const DIAGNOSIS_SIGNALS = [
+  'مشکل', 'خطا', 'ارور', 'عیب', 'داون', 'کار نمی', '502', '503', 'failed',
+  'failure', 'error', 'down', 'diagnos', 'بررسی کن', 'درست کن',
+];
+const ENV_SIGNALS = ['env', 'environment', 'متغیر محیطی', 'متغیرهای محیطی', 'port'];
+const ARCHITECTURE_SIGNALS = [
+  'معماری', 'architecture', 'workload', 'طراحی زیرساخت', 'پیشنهاد زیرساخت',
+];
+
+function containsAny(text: string, signals: readonly string[]): boolean {
+  const normalized = text.toLowerCase().replace(/\u200c/g, ' ');
+  return signals.some((signal) => normalized.includes(signal));
+}
+
+/** Inject only the workflow instructions this turn can actually use. */
+export function systemPromptFor(level: Level, userText = ''): string {
+  const skills: string[] = [];
+  if (level === 3 && containsAny(userText, DIAGNOSIS_SIGNALS)) {
+    skills.push(DIAGNOSE_SKILL);
+  }
+  if (level >= 2 && containsAny(userText, ENV_SIGNALS)) {
+    skills.push(ENV_SKILL);
+  }
+  if (level >= 2 && containsAny(userText, ARCHITECTURE_SIGNALS)) {
+    skills.push(ARCHITECTURE_SKILL);
+  }
+
   return [
     CORE,
     LEVEL_GUIDANCE[level],
-    'Skills available when relevant:',
-    DIAGNOSE_SKILL,
-    ENV_SKILL,
-    ARCHITECTURE_SKILL,
+    ...(skills.length > 0 ? ['Skill workflow for this turn:', ...skills] : []),
   ].join('\n\n');
 }

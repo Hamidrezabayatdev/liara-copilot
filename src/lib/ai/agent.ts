@@ -1,6 +1,7 @@
 import {
   convertToModelMessages,
   createUIMessageStreamResponse,
+  isToolUIPart,
   isStepCount,
   streamText,
   toUIMessageStream,
@@ -11,7 +12,8 @@ import {
 } from 'ai';
 
 import type { LiaraTools } from './tools';
-import { activeToolsFor } from './capability';
+import { activeToolsForTurn } from './capability';
+import { compactModelContext } from './context';
 import { summarize, type UsageMeta } from './cost';
 import { createToolApprovalPolicy, getScopedToolApprovalSecret } from './approval';
 import { systemPromptFor } from './prompts';
@@ -33,6 +35,70 @@ export type ChatMessage = UIMessage<
 type ChatChunk = InferUIMessageChunk<ChatMessage>;
 
 export const MAX_USER_MESSAGE_CHARS = 4_000;
+
+export const GENERATION_BUDGETS = {
+  1: { reasoning: 'none' as const, maxOutputTokens: 1_600 },
+  2: { reasoning: 'low' as const, maxOutputTokens: 2_400 },
+  3: { reasoning: 'medium' as const, maxOutputTokens: 4_096 },
+} satisfies Record<RouteDecision['escalation'], {
+  reasoning: 'none' | 'low' | 'medium';
+  maxOutputTokens: number;
+}>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** A docs lookup is reusable only when it actually returned evidence. */
+export function usefulToolOutput(toolName: string, output: unknown): boolean {
+  if (toolName !== 'searchDocs') {
+    return output !== undefined && (!isRecord(output) || output.ok !== false);
+  }
+  if (!isRecord(output) || output.ok !== true || !isRecord(output.data)) return false;
+  const sources = Array.isArray(output.data.sources)
+    ? output.data.sources
+    : Array.isArray(output.data.hits)
+      ? output.data.hits
+      : [];
+  return sources.length > 0;
+}
+
+/** Same-request counterpart to `completedToolSinceLatestUser`. */
+export function completedUsefulToolInSteps(
+  steps: readonly {
+    toolResults: readonly { toolName: string; output: unknown }[];
+  }[],
+  expectedToolName: string,
+): boolean {
+  return steps.some((step) =>
+    step.toolResults.some(
+      (result) =>
+        result.toolName === expectedToolName &&
+        usefulToolOutput(result.toolName, result.output),
+    ),
+  );
+}
+
+/**
+ * Automatic tool continuations can arrive in a fresh HTTP request. Check the
+ * complete current user turn, not only `streamText`'s in-request step array,
+ * before paying for the same successful lookup again.
+ */
+export function completedToolSinceLatestUser(
+  messages: readonly ChatMessage[],
+  expectedToolName: string,
+): boolean {
+  const latestUserIndex = messages.findLastIndex((message) => message.role === 'user');
+  if (latestUserIndex < 0) return false;
+
+  return messages.slice(latestUserIndex + 1).some((message) =>
+    message.parts.some((part) => {
+      if (!isToolUIPart(part) || part.state !== 'output-available') return false;
+      const name = part.type === 'dynamic-tool' ? part.toolName : part.type.slice(5);
+      return name === expectedToolName && usefulToolOutput(name, part.output);
+    }),
+  );
+}
 
 /** Extract text without trusting client-supplied message metadata. */
 export function latestUserText(messages: readonly ChatMessage[]): string | null {
@@ -119,7 +185,13 @@ export async function streamAgentResponse({
     collector,
     previousLevel: priorDecision?.escalation,
   });
-  const activeTools = [...activeToolsFor(decision.escalation)];
+  const docsAlreadySearched = completedToolSinceLatestUser(messages, 'searchDocs');
+  const diagnosisAlreadyReported = completedToolSinceLatestUser(messages, 'reportDiagnosis');
+  const activeTools = [...activeToolsForTurn(decision.escalation, userText)].filter(
+    (name) =>
+      !(docsAlreadySearched && name === 'searchDocs') &&
+      !(diagnosisAlreadyReported && name === 'reportDiagnosis'),
+  );
   const createdAt = new Date().toISOString();
   const routeMetadata: ChatMessageMetadata = {
     createdAt,
@@ -130,14 +202,30 @@ export async function streamAgentResponse({
       decidedBy: decision.decidedBy,
     },
   };
+  const generationBudget = GENERATION_BUDGETS[decision.escalation];
 
+  const modelMessages = compactModelContext(await convertToModelMessages(messages, { tools }));
   const result = streamText({
     model: modelFor(decision.tier, collector),
-    instructions: systemPromptFor(decision.escalation),
-    messages: await convertToModelMessages(messages, { tools }),
+    instructions: systemPromptFor(decision.escalation, userText),
+    messages: modelMessages,
+    ...generationBudget,
     tools,
     activeTools,
-    prepareStep: () => ({ activeTools }),
+    prepareStep: ({ steps }) => {
+      const alreadySearchedDocs = completedUsefulToolInSteps(steps, 'searchDocs');
+      const alreadyReportedDiagnosis = completedUsefulToolInSteps(
+        steps,
+        'reportDiagnosis',
+      );
+      return {
+        activeTools: activeTools.filter(
+          (name) =>
+            !(alreadySearchedDocs && name === 'searchDocs') &&
+            !(alreadyReportedDiagnosis && name === 'reportDiagnosis'),
+        ),
+      };
+    },
     stopWhen: isStepCount(decision.maxSteps),
     toolApproval: createToolApprovalPolicy(process.env, activeTools, approvalScope),
     experimental_toolApprovalSecret: approvalSecret(approvalScope),

@@ -15,11 +15,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const { route } = (await import(
+const { route, ROUTER_GENERATION_BUDGET } = (await import(
   new URL('router.ts', import.meta.url).href
 )) as typeof import('./router');
 
 const collector = { calls: [] };
+
+test('fallback model routing has a tiny explicit generation budget', () => {
+  assert.deepEqual(ROUTER_GENERATION_BUDGET, {
+    reasoning: 'none',
+    maxOutputTokens: 256,
+    maxRetries: 1,
+  });
+});
 
 /** [message, expected level, why this case exists] */
 const CASES: Array<[string, 1 | 2 | 3, string]> = [

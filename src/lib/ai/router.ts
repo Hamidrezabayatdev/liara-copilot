@@ -216,6 +216,13 @@ const CLASSIFY_SCHEMA = z.object({
   reason: z.string().describe('یک جملهٔ کوتاه فارسی که دلیل انتخاب این سطح را توضیح دهد'),
 });
 
+/** Classification never needs hidden deliberation or an open-ended response. */
+export const ROUTER_GENERATION_BUDGET = {
+  reasoning: 'none' as const,
+  maxOutputTokens: 256,
+  maxRetries: 1,
+};
+
 async function classifyWithModel(
   message: string,
   collector: UsageCollector,
@@ -223,6 +230,7 @@ async function classifyWithModel(
   try {
     const { output } = await generateText({
       model: modelFor('router', collector),
+      ...ROUTER_GENERATION_BUDGET,
       output: Output.object({ schema: CLASSIFY_SCHEMA }),
       system:
         'تو یک مسیریاب هستی، نه پاسخ‌دهنده. پیام کاربر دربارهٔ پلتفرم ابری لیارا است. ' +

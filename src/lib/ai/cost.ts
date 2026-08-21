@@ -32,9 +32,15 @@ export type UsageMeta = ComponentUsageMeta & {
   baselineToman: number;
   /** 0..100, how much the routing saved versus that baseline */
   savedPercent: number;
+  /** False when a successful provider/failover call omitted a real Toman cost. */
+  costComplete: boolean;
 };
 
-export type ModelPrice = { promptUsdPerToken: number; completionUsdPerToken: number };
+export type ModelPrice = {
+  promptUsdPerToken: number;
+  completionUsdPerToken: number;
+  cachedPromptUsdPerToken?: number;
+};
 
 /**
  * Observed 2026-08-21 as total_cost_toman/cost. Only ever used before the first
@@ -46,7 +52,16 @@ function updateFxFrom(calls: CapturedCall[]): void {
   for (const call of calls) {
     const usd = call.usage?.cost;
     const toman = call.usage?.total_cost_toman;
-    if (usd && toman && usd > 0) fxTomanPerUsd = toman / usd;
+    if (
+      typeof usd === 'number' &&
+      Number.isFinite(usd) &&
+      usd > 0 &&
+      typeof toman === 'number' &&
+      Number.isFinite(toman) &&
+      toman > 0
+    ) {
+      fxTomanPerUsd = toman / usd;
+    }
   }
 }
 
@@ -63,7 +78,6 @@ export async function loadPricing(): Promise<Map<string, ModelPrice>> {
   const key = process.env.LIARA_AI_KEY;
   const prices = new Map<string, ModelPrice>();
   if (!base || !key) {
-    priceCache = prices;
     return prices;
   }
   try {
@@ -76,18 +90,25 @@ export async function loadPricing(): Promise<Map<string, ModelPrice>> {
       const body = (await res.json()) as { data?: unknown };
       const items = Array.isArray(body) ? body : Array.isArray(body.data) ? body.data : [];
       for (const raw of items) {
-        const m = raw as { id?: string; pricing?: { prompt?: string; completion?: string } };
+        const m = raw as {
+          id?: string;
+          pricing?: { prompt?: string; completion?: string; input_cache_read?: string };
+        };
         if (!m.id) continue;
         prices.set(m.id, {
           promptUsdPerToken: Number(m.pricing?.prompt ?? 0) || 0,
           completionUsdPerToken: Number(m.pricing?.completion ?? 0) || 0,
+          cachedPromptUsdPerToken:
+            Number(m.pricing?.input_cache_read ?? 0) || undefined,
         });
       }
     }
   } catch {
     // offline / gateway down: baseline shows 0 and the UI hides the comparison
   }
-  priceCache = prices;
+  // Do not turn a transient timeout/non-200 into a process-lifetime failure.
+  // A successful catalogue is stable enough to cache; an empty one can retry.
+  if (prices.size > 0) priceCache = prices;
   return prices;
 }
 
@@ -97,14 +118,29 @@ export function estimateToman(
   modelId: string,
   inputTokens: number,
   outputTokens: number,
+  cachedInputTokens = 0,
 ): number {
   const p = prices.get(modelId);
   if (!p) return 0;
-  const usd = inputTokens * p.promptUsdPerToken + outputTokens * p.completionUsdPerToken;
+  const cached = Math.max(0, Math.min(inputTokens, cachedInputTokens));
+  const uncached = Math.max(0, inputTokens - cached);
+  const usd =
+    uncached * p.promptUsdPerToken +
+    cached * (p.cachedPromptUsdPerToken ?? p.promptUsdPerToken) +
+    outputTokens * p.completionUsdPerToken;
   return usd * fxTomanPerUsd;
 }
 
-const sum = (ns: Array<number | undefined>) => ns.reduce<number>((a, b) => a + (b ?? 0), 0);
+const safeAmount = (value: number | undefined): number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+
+const sum = (ns: Array<number | undefined>) =>
+  ns.reduce<number>((total, value) => total + safeAmount(value), 0);
+
+function hasRealToman(call: CapturedCall): boolean {
+  const value = call.usage?.total_cost_toman;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
 
 /**
  * Fold every model call made while answering one message into a single record
@@ -121,6 +157,7 @@ export async function summarize(
   updateFxFrom(collector.calls);
   const calls = collector.calls;
   const billed = calls.filter(c => c.ok);
+  const costComplete = billed.length > 0 && billed.every(hasRealToman);
 
   const promptTokens = sum(billed.map(c => c.usage?.prompt_tokens));
   const completionTokens = sum(billed.map(c => c.usage?.completion_tokens));
@@ -129,7 +166,27 @@ export async function summarize(
   const reasoningTokens = sum(billed.map(c => c.usage?.completion_tokens_details?.reasoning_tokens));
 
   const prices = await loadPricing();
-  const baselineToman = estimateToman(prices, MODELS.baseline(), promptTokens, completionTokens);
+  const estimatedBaselineToman = estimateToman(
+    prices,
+    MODELS.baseline(),
+    promptTokens,
+    completionTokens,
+    cachedTokens,
+  );
+  // A partial actual cost cannot support an honest savings percentage. Keep the
+  // known subtotal, but hide the counterfactual until every successful provider
+  // call supplied Liara's real Toman field.
+  const baselineToman = costComplete ? estimatedBaselineToman : 0;
+
+  const byModel = new Map<string, { model: string; calls: number; toman: number }>();
+  for (const call of billed) {
+    const current = byModel.get(call.model);
+    byModel.set(call.model, {
+      model: call.model,
+      calls: (current?.calls ?? 0) + 1,
+      toman: (current?.toman ?? 0) + safeAmount(call.usage?.total_cost_toman),
+    });
+  }
 
   // Guard both directions: no baseline price (catalogue fetch failed) and the
   // case where the route we picked was actually the expensive one.
@@ -156,5 +213,7 @@ export async function summarize(
     viaFallback: fallback,
     baselineToman,
     savedPercent,
+    modelBreakdown: [...byModel.values()],
+    costComplete,
   };
 }

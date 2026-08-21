@@ -43,6 +43,20 @@ const SAMPLE_INPUTS: Record<string, unknown> = {
   listBuckets: {},
   listDnsRecords: { zone: 'example.com' },
   getPlans: { kind: 'projects' },
+  reportDiagnosis: {
+    symptom: 'اپ پاسخ 502 می‌دهد',
+    rootCause: 'پردازه روی پورت مورد انتظار گوش نمی‌دهد',
+    evidence: [
+      { text: 'لاگ startup پورت 8080 را نشان می‌دهد', sourceKind: 'account' },
+    ],
+    recommendation: {
+      title: 'PORT را با پورت برنامه هماهنگ کنید',
+      steps: ['وضعیت env را دوباره بخوانید', 'تغییر را برای تأیید نمایش دهید'],
+    },
+    confidence: 0.9,
+    severity: 'critical',
+    appName: 'demo',
+  },
   setEnvVars: {
     appName: 'demo',
     expectedRevision: '0'.repeat(64),
@@ -70,9 +84,9 @@ const SAMPLE_INPUTS: Record<string, unknown> = {
   },
 };
 
-test('inventory is exactly the MASTER-PLAN 20-tool surface', () => {
+test('inventory is exactly the MASTER-PLAN 21-tool surface', () => {
   const tools = registry();
-  assert.equal(TOOL_NAMES.length, 20);
+  assert.equal(TOOL_NAMES.length, 21);
   assert.deepEqual(Object.keys(tools), [...TOOL_NAMES]);
   assert.deepEqual(Object.keys(SAMPLE_INPUTS), [...TOOL_NAMES]);
   assert.doesNotMatch(JSON.stringify(tools), new RegExp(TEST_TOKEN));
@@ -103,7 +117,30 @@ test('every tool owns trusted metadata and no probe can reach DELETE', () => {
     );
   }
 
-  assert.equal(liaraProbeCount, 18, 'only searchDocs and askUser are non-Liara tools');
+  assert.equal(
+    liaraProbeCount,
+    18,
+    'searchDocs, reportDiagnosis and askUser are the only non-Liara tools',
+  );
+});
+
+test('reportDiagnosis is a local read-only presentation tool', async () => {
+  const definition = registry().reportDiagnosis;
+  assert.deepEqual(definition.probe?.(SAMPLE_INPUTS.reportDiagnosis), {
+    scope: 'local',
+    operation: 'reportDiagnosis',
+  });
+  assert.equal(typeof definition.execute, 'function');
+  const result = await definition.execute!(SAMPLE_INPUTS.reportDiagnosis, {
+    toolCallId: 'diagnosis-call',
+    messages: [],
+    context: {},
+  });
+  assert.deepEqual(result, {
+    ok: true,
+    data: { rendered: true },
+    source: 'inference',
+  });
 });
 
 test('listEnvVars redacts secret values before the tool result leaves the server', async () => {

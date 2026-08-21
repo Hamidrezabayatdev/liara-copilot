@@ -52,7 +52,7 @@ import {
   redactEnvValue,
   scalarDiff,
   toApp,
-  toDatabaseApp,
+  toDatabase,
   toDeployment,
   toDnsRecord,
   toEnvVars,
@@ -73,7 +73,7 @@ export type LiaraToolProbe = {
 
 export type ToolProbe =
   | LiaraToolProbe
-  | { scope: 'local'; operation: 'searchDocs' }
+  | { scope: 'local'; operation: 'searchDocs' | 'reportDiagnosis' }
   | { scope: 'client'; operation: 'askUser' };
 
 /** Structural on purpose: approval.ts can audit any registry without coupling. */
@@ -158,6 +158,30 @@ const dnsContentSchema = z.record(
   z.string(),
   z.union([z.string(), z.number(), z.boolean()]),
 );
+
+const diagnosticResultSchema = z.object({
+  symptom: z.string().min(2).max(500),
+  rootCause: z.string().min(2).max(700),
+  evidence: z
+    .array(
+      z.object({
+        text: z.string().min(2).max(500),
+        sourceKind: z.enum(['docs', 'account', 'inference']),
+        sourceId: z.string().min(1).max(160).optional(),
+      }),
+    )
+    .min(1)
+    .max(6),
+  recommendation: z.object({
+    title: z.string().min(2).max(300),
+    detail: z.string().max(700).optional(),
+    steps: z.array(z.string().min(1).max(300)).max(5).optional(),
+    actionLabel: z.string().min(1).max(80).optional(),
+  }),
+  confidence: z.number().min(0).max(1),
+  severity: z.enum(['critical', 'degraded', 'healthy']),
+  appName: appNameSchema.optional(),
+});
 
 /* ================================================================== *
  * Safe compact result helpers
@@ -272,6 +296,7 @@ export const TOOL_NAMES = [
   'listBuckets',
   'listDnsRecords',
   'getPlans',
+  'reportDiagnosis',
   'setEnvVars',
   'restartApp',
   'scaleApp',
@@ -306,7 +331,7 @@ export function createLiaraTools(
         description: 'Search the bundled official Liara documentation. Use returned source URLs as citations.',
         inputSchema: z.object({
           query: z.string().min(2).max(500).describe('The user question or focused search phrase'),
-          limit: z.number().int().min(1).max(6).optional().describe('Number of diverse sources, default 5'),
+          limit: z.number().int().min(1).max(6).optional().describe('Maximum candidates; relevance cutoff returns up to 4'),
         }),
         execute: async ({ query, limit }) => {
           const result = await searchDocsIndex(query, {
@@ -458,13 +483,13 @@ export function createLiaraTools(
 
     listDatabases: trusted(
       tool({
-        description: 'List managed Liara databases using compact application-card fields.',
+        description: 'List managed Liara databases using compact database-specific fields.',
         inputSchema: z.object({}),
         execute: async () => {
           const result = await listDatabasesApi(ctx);
           if (!result.ok) return failure(result, token);
           const rows = Array.isArray(result.data?.databases) ? result.data.databases : [];
-          return accountData({ databases: rows.map((row) => toDatabaseApp(row)) });
+          return accountData({ databases: rows.map((row) => toDatabase(row)) });
         },
       }),
       'read',
@@ -478,7 +503,7 @@ export function createLiaraTools(
         execute: async ({ databaseId }) => {
           const result = await getDatabaseApi(ctx, databaseId);
           if (!result.ok) return failure(result, token);
-          return accountData({ database: toDatabaseApp(result.data.database) });
+          return accountData({ database: toDatabase(result.data.database) });
         },
       }),
       'read',
@@ -529,6 +554,21 @@ export function createLiaraTools(
       }),
       'read',
       () => liaraProbe('paas', 'GET', '/v1/me'),
+    ),
+
+    reportDiagnosis: trusted(
+      tool({
+        description:
+          'Present one final structured troubleshooting verdict after inspection. Call once when stopping: include only evidence already observed, distinguish provenance, and never use this tool to perform the proposed fix.',
+        inputSchema: diagnosticResultSchema,
+        execute: async () => ({
+          ok: true as const,
+          data: { rendered: true as const },
+          source: 'inference' as const,
+        }),
+      }),
+      'read',
+      () => ({ scope: 'local', operation: 'reportDiagnosis' }),
     ),
 
     setEnvVars: trusted(

@@ -18,6 +18,7 @@ import type {
   AppMetricSnapshot,
   AppPlatform,
   AppStatus,
+  DatabaseEngine,
   Deployment,
   DeploymentState,
   DiffRow,
@@ -25,6 +26,7 @@ import type {
   DnsRecordType as UiDnsRecordType,
   EnvVar as UiEnvVar,
   LiaraApp,
+  LiaraDatabase,
   LogLine as UiLogLine,
   LogSeverity,
   MetricSeries as UiMetricSeries,
@@ -105,6 +107,34 @@ export function toPlatform(type: unknown): AppPlatform {
   return PLATFORM_ALIASES[t] ?? 'docker';
 }
 
+const DATABASE_ENGINE_ALIASES: Record<string, DatabaseEngine> = {
+  postgres: 'postgres',
+  postgresql: 'postgres',
+  mysql: 'mysql',
+  mariadb: 'mariadb',
+  maria_db: 'mariadb',
+  mongodb: 'mongodb',
+  mongo: 'mongodb',
+  redis: 'redis',
+  rabbitmq: 'rabbitmq',
+  rabbit_mq: 'rabbitmq',
+  'rabbit-mq': 'rabbitmq',
+  elasticsearch: 'elasticsearch',
+  elastic_search: 'elasticsearch',
+  'elastic-search': 'elasticsearch',
+  elastic: 'elasticsearch',
+  mssql: 'mssql',
+  ms_sql: 'mssql',
+  sqlserver: 'mssql',
+  'sql-server': 'mssql',
+};
+
+/** DBaaS has a different product vocabulary from PaaS build packs. */
+export function toDatabaseEngine(type: unknown): DatabaseEngine {
+  const engine = String(type ?? '').trim().toLowerCase();
+  return DATABASE_ENGINE_ALIASES[engine] ?? 'unknown';
+}
+
 /**
  * Liara's status vocabulary is wider than the four states the UI draws, and
  * two of the mappings carry judgement worth naming:
@@ -162,12 +192,13 @@ export function toApp(raw: AppSummary, plans?: Record<string, Plan>): LiaraApp {
       ? raw.domains.map((d) => (typeof d === 'string' ? d : str((d as { name?: string })?.name) ?? '')).filter(Boolean)
       : undefined,
     createdAt: iso(raw.created_at) ?? new Date(0).toISOString(),
+    isDeployed: typeof raw.isDeployed === 'boolean' ? raw.isDeployed : undefined,
     network: str(raw.network?.name),
     note: raw.isDeployed === false ? 'هنوز هیچ release موفقی روی این app منتشر نشده است.' : undefined,
   };
 }
 
-export function toDatabaseApp(raw: DatabaseSummary, plans?: Record<string, Plan>): LiaraApp {
+export function toDatabase(raw: DatabaseSummary, plans?: Record<string, Plan>): LiaraDatabase {
   const name = str(raw.hostname) ?? str(raw._id) ?? 'unknown';
   const scale = num(raw.scale) ?? 0;
   const planId = str(raw.planID) ?? 'unknown';
@@ -175,8 +206,8 @@ export function toDatabaseApp(raw: DatabaseSummary, plans?: Record<string, Plan>
 
   return {
     id: str(raw._id) ?? str(raw.id) ?? name,
-    name,
-    platform: toPlatform(raw.type),
+    hostname: name,
+    engine: toDatabaseEngine(raw.type),
     status: toStatus(raw.status, scale, true),
     planId,
     planSummary: planSummary(plan),
@@ -185,7 +216,8 @@ export function toDatabaseApp(raw: DatabaseSummary, plans?: Record<string, Plan>
     createdAt: iso(raw.created_at) ?? new Date(0).toISOString(),
     version: str(raw.version),
     network: str(raw.network?.name),
-    note: raw.publicNetwork === true ? 'public network روی این database فعال است.' : undefined,
+    publicNetwork: raw.publicNetwork === true,
+    internalPort: num(raw.internalPort),
   };
 }
 

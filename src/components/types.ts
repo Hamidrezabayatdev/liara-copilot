@@ -25,6 +25,20 @@ export type AppPlatform =
   | "mongodb"
   | "redis";
 
+/** Canonical DBaaS engine slugs. Kept separate from PaaS platforms so managed
+ * services such as RabbitMQ and Elasticsearch are never presented as Docker
+ * applications. */
+export type DatabaseEngine =
+  | "postgres"
+  | "mysql"
+  | "mariadb"
+  | "mongodb"
+  | "redis"
+  | "rabbitmq"
+  | "elasticsearch"
+  | "mssql"
+  | "unknown";
+
 export interface AppMetricSnapshot {
   /** Percentage 0–100. */
   cpuPercent?: number;
@@ -55,6 +69,8 @@ export interface LiaraApp {
   /** Custom domains bound to the app. */
   domains?: string[];
   createdAt: string;
+  /** Whether Liara reports that at least one release has been deployed. */
+  isDeployed?: boolean;
   /** ISO timestamp of the most recent successful deploy. */
   lastDeployedAt?: string;
   /** Postgres/MySQL version for database resources. */
@@ -64,6 +80,24 @@ export interface LiaraApp {
   metrics?: AppMetricSnapshot;
   /** Short Persian note explaining an abnormal state. */
   note?: string;
+}
+
+/** A managed DBaaS resource. Kept separate from applications so the UI never
+ * implies that databases have deploys, releases, or application instances. */
+export interface LiaraDatabase {
+  id: string;
+  hostname: string;
+  engine: DatabaseEngine;
+  status: AppStatus;
+  planId: string;
+  planSummary?: string;
+  region: string;
+  createdAt: string;
+  version?: string;
+  network?: string;
+  publicNetwork: boolean;
+  internalPort?: number;
+  scale: number;
 }
 
 export type DeploymentState =
@@ -197,6 +231,14 @@ export interface ChecklistStep {
 }
 
 /** Per-message accounting, sourced from Liara AI's `usage` block. */
+export interface ModelUsageItem {
+  model: string;
+  /** Actual successful provider calls, not chat-message count. */
+  calls: number;
+  /** Real Toman attributed to those calls. */
+  toman: number;
+}
+
 export interface UsageMeta {
   model: string;
   promptTokens: number;
@@ -205,10 +247,14 @@ export interface UsageMeta {
   reasoningTokens?: number;
   /** `usage.total_cost_toman` — read, never estimated. */
   toman: number;
+  /** False when any successful provider call omitted a billable Toman amount. */
+  costComplete?: boolean;
   toolCalls: number;
   latencyMs: number;
   /** 1 = direct answer, 2 = retrieval/inspect, 3 = full agentic reasoning. */
   escalation: 1 | 2 | 3;
   /** Persian explanation of the routing decision, shown in the popover. */
   routingReason?: string;
+  /** Real call-level split; keeps router/embedding spend attributed correctly. */
+  modelBreakdown?: ModelUsageItem[];
 }

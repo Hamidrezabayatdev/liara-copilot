@@ -196,6 +196,13 @@ test('local/client probes are bound to their exact trusted tool names', async ()
       probe: () => ({ scope: 'local', operation: 'searchDocs' }),
     },
   });
+  const report = await decide('reportDiagnosis', {
+    reportDiagnosis: {
+      kind: 'read',
+      probe: () => ({ scope: 'local', operation: 'reportDiagnosis' }),
+      execute: () => ({ ok: true }),
+    },
+  });
   const ask = await decide('askUser', {
     askUser: {
       kind: 'read',
@@ -206,6 +213,7 @@ test('local/client probes are bound to their exact trusted tool names', async ()
   assert.equal(mismatch.type, 'denied');
   assert.match(mismatch.reason ?? '', /does not match/i);
   assert.equal(search.type, 'approved');
+  assert.equal(report.type, 'approved');
   assert.equal(ask.type, 'not-applicable');
 });
 
