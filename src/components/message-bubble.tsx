@@ -29,10 +29,13 @@ const RichText = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="h-20 animate-pulse rounded-lg bg-muted/35"
+        className="flex min-h-16 items-start gap-2 py-2 text-xs text-muted-foreground"
         role="status"
         aria-label="در حال آماده‌سازی نمایش پاسخ"
-      />
+      >
+        <span className="mt-1 size-1.5 animate-step-pulse rounded-full bg-primary" aria-hidden />
+        <span>در حال آماده‌سازی پاسخ…</span>
+      </div>
     ),
   },
 );
@@ -54,30 +57,17 @@ export type MessageBubbleProps = {
   className?: string;
 };
 
-function Avatar({ role, streaming = false }: { role: ChatRole; streaming?: boolean }) {
-  if (role === "user") {
-    return (
-      <span className="mt-1 grid size-8 shrink-0 place-items-center rounded-lg border border-border/70 bg-muted/50 text-muted-foreground">
-        <CircleUserRoundIcon className="size-4" />
-      </span>
-    );
-  }
-
+function UserAvatar() {
   return (
-    <span
-      className={cn(
-        "mt-1 grid size-8 shrink-0 place-items-center rounded-lg border bg-muted text-foreground",
-        streaming ? "border-primary/45" : "border-border",
-      )}
-    >
-      <SparklesIcon className="size-4" />
+    <span className="mt-1 grid size-8 shrink-0 place-items-center rounded-lg border border-border/70 bg-muted/50 text-muted-foreground">
+      <CircleUserRoundIcon className="size-4" />
     </span>
   );
 }
 
 function PendingAnswer() {
   return (
-    <div className="flex flex-col gap-3 py-1">
+    <div className="flex min-h-16 flex-col gap-3 py-2" role="status" aria-live="polite">
       <div className="flex items-center gap-2.5">
         <span className="flex items-center gap-1" aria-hidden>
           {[0, 1, 2].map((index) => (
@@ -88,9 +78,9 @@ function PendingAnswer() {
             />
           ))}
         </span>
-        <span className="text-xs font-medium text-foreground/85">در حال بررسی…</span>
+        <span className="text-xs text-muted-foreground">در حال بررسی درخواست…</span>
       </div>
-      <div className="relative h-px overflow-hidden bg-border">
+      <div className="relative h-px w-36 max-w-full overflow-hidden bg-border">
         <span className="absolute inset-y-0 end-0 w-1/2 animate-sheen bg-primary" />
       </div>
     </div>
@@ -128,7 +118,7 @@ function MessageBubble({
             </span>
           ) : null}
         </div>
-        <Avatar role="user" />
+        <UserAvatar />
       </article>
     );
   }
@@ -138,32 +128,47 @@ function MessageBubble({
       data-slot="message-bubble"
       data-role="assistant"
       aria-busy={streaming || pending}
-      className={cn("animate-rise flex items-start gap-3", className)}
+      className={cn(
+        "animate-rise grid grid-cols-[1.5rem_minmax(0,1fr)] items-start gap-x-2.5",
+        className,
+      )}
     >
-      <Avatar role="assistant" streaming={streaming || pending} />
+      <span
+        className={cn(
+          "mt-1 grid size-6 place-items-center text-primary",
+          (streaming || pending) && "animate-breathe",
+        )}
+        aria-hidden
+      >
+        <SparklesIcon className="size-4" />
+      </span>
 
-      <div className="min-w-0 flex-1 overflow-hidden rounded-xl rounded-ss-sm border border-border/70 bg-card">
-        <div className="flex items-center gap-2 border-b border-border/50 px-4 py-2.5">
-          <span className="text-[0.6875rem] font-bold">کوپایلت لیارا</span>
+      <div className="min-w-0">
+        <div className="flex min-h-7 items-center gap-2">
+          <span className="text-[0.6875rem] font-medium text-muted-foreground">دستیار لیارا</span>
           {error ? (
             <span className="inline-flex items-center gap-1.5 text-[0.625rem] text-destructive">
               <AlertTriangleIcon className="size-3" />
               پاسخ ناموفق
             </span>
-          ) : streaming || pending ? (
-            <span className="inline-flex items-center gap-1.5 text-[0.625rem] text-primary">
+          ) : streaming ? (
+            <span
+              className="inline-flex items-center gap-1.5 text-[0.625rem] text-primary"
+              role="status"
+              aria-live="polite"
+            >
               <span className="size-1.5 animate-breathe rounded-full bg-primary" />
-              در حال کار
+              در حال نوشتن
             </span>
           ) : null}
           <span className="flex-1" />
           {!streaming && content ? <CopyButton value={content} className="size-7" /> : null}
         </div>
 
-        <div className="px-4 py-4 sm:px-5 sm:py-5">
+        <div className="min-w-0 pt-2">
           {error ? (
             <div
-              className="rounded-xl border border-destructive/30 bg-destructive/8 px-3.5 py-3"
+              className="border-s-2 border-destructive/50 py-1 ps-3"
               role="alert"
             >
               <p className="flex items-start gap-2 text-xs leading-6 text-destructive">
@@ -183,7 +188,14 @@ function MessageBubble({
             <RichText text={content} streaming={streaming} />
           )}
 
-          {children ? <div className="mt-4 flex flex-col gap-3">{children}</div> : null}
+          {children ? (
+            <div
+              className="mt-5 flex flex-col gap-2.5 border-s border-border/70 ps-3.5 sm:ps-4"
+              data-slot="assistant-activity"
+            >
+              {children}
+            </div>
+          ) : null}
 
           {sources && sources.length > 0 ? (
             <Collapsible open={showSources} onOpenChange={setShowSources} className="mt-4">

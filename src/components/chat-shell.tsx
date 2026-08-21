@@ -26,7 +26,6 @@ import {
 
 import { ApplicationCard } from "@/components/application-card";
 import { AccountConnection } from "@/components/account-connection";
-import { AgentChecklist } from "@/components/agent-checklist";
 import { AskUserPrompt, type AskUserOption } from "@/components/ask-user-prompt";
 import { BeforeAfterDiff } from "@/components/before-after-diff";
 import { ChatComposer } from "@/components/chat-composer";
@@ -56,7 +55,6 @@ import {
 import type {
   AppPlatform,
   AppStatus,
-  ChecklistStep,
   DatabaseEngine,
   Deployment,
   DeploymentState,
@@ -783,36 +781,40 @@ function approvalCopy(name: string, input: unknown): ApprovalCopy {
 function ToolStatus({
   name,
   state,
+  summary,
 }: {
   name: string;
   state: "loading" | "waiting" | "success" | "denied" | "error";
+  summary?: string;
 }) {
   const label = TOOL_LABELS[name] ?? "ابزار زیرساخت";
   const meta = {
     loading: {
       icon: LoaderCircleIcon,
       variant: "info" as const,
-      text: "در حال اجرا…",
+      title: `${label} در حال اجراست…`,
     },
     waiting: {
       icon: ShieldCheckIcon,
       variant: "warning" as const,
-      text: "منتظر تأیید شماست.",
+      title: label,
+      description: "منتظر تأیید شماست.",
     },
     success: {
       icon: CheckCircle2Icon,
       variant: "success" as const,
-      text: "با موفقیت انجام شد.",
+      title: summary ?? `${label} انجام شد`,
     },
     denied: {
       icon: CircleXIcon,
       variant: "warning" as const,
-      text: "این عملیات اجرا نشد.",
+      title: `${label} اجرا نشد`,
     },
     error: {
       icon: CircleXIcon,
       variant: "destructive" as const,
-      text: "اجرای ابزار ناموفق بود؛ جزئیات حساس نمایش داده نمی‌شود.",
+      title: `${label} ناموفق بود`,
+      description: "جزئیات حساس نمایش داده نمی‌شود.",
     },
   }[state];
   const Icon = meta.icon;
@@ -820,11 +822,15 @@ function ToolStatus({
   return (
     <Alert
       variant={meta.variant}
+      role={state === "error" || state === "denied" ? "alert" : "status"}
+      aria-live={state === "error" || state === "denied" ? "assertive" : "polite"}
       className={cn("animate-rise bg-card", state === "loading" && "border-primary/35")}
     >
       <Icon className={state === "loading" ? "animate-spin" : undefined} />
-      <AlertTitle>{label}</AlertTitle>
-      <AlertDescription>{meta.text}</AlertDescription>
+      <AlertTitle>{meta.title}</AlertTitle>
+      {meta.description ? (
+        <AlertDescription>{meta.description}</AlertDescription>
+      ) : null}
       {state === "loading" ? (
         <span className="absolute inset-x-0 bottom-0 h-px overflow-hidden" aria-hidden>
           <span className="absolute inset-y-0 end-0 w-1/2 animate-sheen bg-primary" />
@@ -835,15 +841,15 @@ function ToolStatus({
 }
 
 function DocsEvidence({ sources }: { sources: Source[] }) {
-  const [open, setOpen] = React.useState(sources.length === 1);
+  const [open, setOpen] = React.useState(false);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border p-2">
       <CollapsibleTrigger asChild>
-        <Button variant="ghost" size="sm" className="w-full justify-between rounded-xl">
+        <Button variant="ghost" size="sm" className="w-full justify-between">
           <span className="inline-flex items-center gap-2">
             <BookOpenTextIcon data-icon="inline-start" />
-            {sources.length.toLocaleString("fa-IR")} منبع رسمی مرتبط استفاده شد
+            {sources.length.toLocaleString("fa-IR")} منبع رسمی پیدا شد
           </span>
           <ChevronDownIcon data-icon="inline-end" className={cn("transition-transform", open && "rotate-180")} />
         </Button>
@@ -853,6 +859,123 @@ function DocsEvidence({ sources }: { sources: Source[] }) {
           <SourceCard key={source.id} source={source} index={index + 1} compact={sources.length > 2} />
         ))}
       </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+function resultCount(value: unknown, keys: string[], predicate: (item: unknown) => boolean, limit: number) {
+  return arrayAt(value, keys).filter(predicate).slice(0, limit).length;
+}
+
+function toolResultSummary(name: string, output: unknown): string {
+  const payload = unwrapResult(output);
+  const count = (value: number) => value.toLocaleString("fa-IR");
+
+  if (name === "searchDocs") {
+    return `${count(resultCount(payload, ["sources", "hits"], isSource, 6))} منبع رسمی پیدا شد`;
+  }
+  if (name === "listApps" || name === "getApp") {
+    const singular = valueAt(payload, ["app"]);
+    const total = singular && isApp(singular)
+      ? 1
+      : resultCount(payload, ["apps"], isApp, 12);
+    return `${count(total)} برنامه پیدا شد`;
+  }
+  if (name === "listDatabases" || name === "getDatabase") {
+    const singular = valueAt(payload, ["database"]);
+    const total = singular && isDatabase(singular)
+      ? 1
+      : resultCount(payload, ["databases"], isDatabase, 12);
+    return `${count(total)} دیتابیس پیدا شد`;
+  }
+  if (name === "getAppLogs") {
+    return `${count(resultCount(payload, ["logs", "lines"], isLogLine, 300))} خط لاگ دریافت شد`;
+  }
+  if (name === "getAppEvents") {
+    return `${count(resultCount(payload, ["events"], isAppEvent, 100))} رویداد پیدا شد`;
+  }
+  if (name === "getAppReleases") {
+    return `${count(resultCount(payload, ["releases", "deployments"], isDeployment, 12))} نسخه پیدا شد`;
+  }
+  if (name === "getAppMetrics") {
+    const source = isRecord(payload) ? payload : {};
+    return `${count(metricSeries(source.metrics).length)} متریک زنده دریافت شد`;
+  }
+  if (name === "listEnvVars") {
+    return `${count(resultCount(payload, ["envs"], isEnvVar, 100))} متغیر محیطی پیدا شد`;
+  }
+  if (name === "listBuckets") {
+    return `${count(resultCount(payload, ["buckets"], isBucket, 100))} باکت پیدا شد`;
+  }
+  if (name === "getPlans") {
+    return `${count(resultCount(payload, ["plans"], isLivePlan, Number.POSITIVE_INFINITY))} پلن پیدا شد`;
+  }
+  if (name === "listDnsRecords" || name === "createDnsRecord") {
+    const singular = valueAt(payload, ["record"]);
+    const total = singular && isDnsRecord(singular)
+      ? 1
+      : resultCount(payload, ["records"], isDnsRecord, 100);
+    return `${count(total)} رکورد DNS پیدا شد`;
+  }
+  if (name === "reportDiagnosis") return "نتیجهٔ عیب‌یابی آماده شد";
+  if (name === "restartApp") return "اپلیکیشن با موفقیت ری‌استارت شد";
+  if (["setEnvVars", "scaleApp", "resizeApp", "rollbackRelease"].includes(name)) {
+    return "تغییر با موفقیت انجام شد";
+  }
+  return `${TOOL_LABELS[name] ?? "بررسی زیرساخت"} انجام شد`;
+}
+
+function hasStructuredDetails(name: string, output: unknown): boolean {
+  const payload = unwrapResult(output);
+
+  if (name === "listApps" || name === "getApp") {
+    const singular = valueAt(payload, ["app"]);
+    return Boolean(singular && isApp(singular)) || resultCount(payload, ["apps"], isApp, 12) > 0;
+  }
+  if (name === "listDatabases" || name === "getDatabase") {
+    const singular = valueAt(payload, ["database"]);
+    return Boolean(singular && isDatabase(singular)) || resultCount(payload, ["databases"], isDatabase, 12) > 0;
+  }
+  if (name === "getAppLogs") {
+    return Array.isArray(valueAt(payload, ["logs", "lines"]));
+  }
+  if (name === "getAppReleases") {
+    return resultCount(payload, ["releases", "deployments"], isDeployment, 12) > 0;
+  }
+  if (["getAppEvents", "getAppMetrics", "listEnvVars", "listBuckets", "getPlans"].includes(name)) {
+    return true;
+  }
+  if (name === "listDnsRecords" || name === "createDnsRecord") {
+    const singular = valueAt(payload, ["record"]);
+    return Boolean(singular && isDnsRecord(singular)) || Array.isArray(valueAt(payload, ["records"]));
+  }
+  return false;
+}
+
+function ToolResultDisclosure({
+  summary,
+  children,
+}: {
+  summary: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border p-2">
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="w-full justify-between">
+          <span className="inline-flex min-w-0 items-center gap-2">
+            <CheckCircle2Icon data-icon="inline-start" />
+            <span className="truncate">{summary}</span>
+          </span>
+          <ChevronDownIcon
+            data-icon="inline-end"
+            className={cn("transition-transform", open && "rotate-180")}
+          />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-2">{children}</CollapsibleContent>
     </Collapsible>
   );
 }
@@ -1162,41 +1285,49 @@ function ToolPart({
   if (part.state === "output-denied") {
     return <ToolStatus name={name} state="denied" />;
   }
-  return (
-    <StructuredToolOutput
-      name={name}
-      output={part.output}
-      input={part.input}
-      onFollowUp={busy ? undefined : onFollowUp}
-    />
-  );
-}
 
-function checklistSteps(parts: LooseToolPart[]): ChecklistStep[] {
-  return parts.map((part) => {
-    const name = toolName(part);
-    const failed =
-      part.state === "output-error" ||
-      (part.state === "output-available" && failedResult(part.output));
-    const skipped =
-      part.state === "output-denied" ||
-      (part.state === "approval-responded" && part.approval?.approved === false);
-    const done = part.state === "output-available" && !failed;
+  if (failedResult(part.output)) {
+    return <ToolStatus name={name} state="error" />;
+  }
 
-    return {
-      id: part.toolCallId,
-      label: TOOL_LABELS[name] ?? "بررسی زیرساخت",
-      tool: name || undefined,
-      state: failed ? "failed" : skipped ? "skipped" : done ? "done" : "running",
-      detail: failed
-        ? "این مرحله کامل نشد."
-        : skipped
-          ? "با تصمیم شما اجرا نشد."
-          : part.state === "approval-requested"
-            ? "منتظر تأیید صریح شماست."
-            : undefined,
-    };
-  });
+  const summary = toolResultSummary(name, part.output);
+  const payload = unwrapResult(part.output);
+  const docs = name === "searchDocs"
+    ? arrayAt(payload, ["sources", "hits"]).filter(isSource).slice(0, 6)
+    : [];
+  const changeDiff = ["setEnvVars", "scaleApp", "resizeApp", "rollbackRelease"].includes(name)
+    ? arrayAt(payload, ["diff"]).filter(isDiffRow)
+    : [];
+
+  if (
+    docs.length > 0 ||
+    (name === "reportDiagnosis" && diagnosisInput(part.input)) ||
+    changeDiff.length > 0
+  ) {
+    return (
+      <StructuredToolOutput
+        name={name}
+        output={part.output}
+        input={part.input}
+        onFollowUp={busy ? undefined : onFollowUp}
+      />
+    );
+  }
+
+  if (hasStructuredDetails(name, part.output)) {
+    return (
+      <ToolResultDisclosure summary={summary}>
+        <StructuredToolOutput
+          name={name}
+          output={part.output}
+          input={part.input}
+          onFollowUp={busy ? undefined : onFollowUp}
+        />
+      </ToolResultDisclosure>
+    );
+  }
+
+  return <ToolStatus name={name} state="success" summary={summary} />;
 }
 
 function findPendingApproval(messages: UIMessage[]): PendingApproval | null {
@@ -1532,14 +1663,6 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
                           usage={message.role === "assistant" ? metadata.usage : undefined}
                           baselineToman={message.role === "assistant" ? metadata.baselineToman : undefined}
                         >
-                          {message.role === "assistant" && looseToolParts.length > 0 ? (
-                            <AgentChecklist
-                              steps={checklistSteps(looseToolParts)}
-                              title="گزارش اجرای عامل"
-                              loading={isLast && busy}
-                              dense
-                            />
-                          ) : null}
                           {message.role === "assistant" && toolParts.length > 0
                             ? looseToolParts.map((loose) => (
                                 <ToolPart
