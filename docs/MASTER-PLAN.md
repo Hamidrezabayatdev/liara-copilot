@@ -8,7 +8,7 @@ Written 2026-08-21. Supersedes `ARCHITECTURE-NOTES.md` as the plan; defers to
 |---|---|
 | **Product** | لیارا کوپایلوت / Liara Copilot — an adaptive AI agent over Liara's cloud platform |
 | **Source spec** | `liara-agentic-assistant-product-spec-v2-en.md` (871 lines, purely descriptive — every implementation decision below is ours) |
-| **Deliverable** | live URL on Liara + public repo + demo video |
+| **Deliverable** | live URL on Liara + public repo + judge demo script |
 | **Team** | solo |
 | **Budget** | 12–16 hours |
 | **Language** | Persian UI, شما form, technical terms left in Latin script — the way Liara's own docs write |
@@ -27,12 +27,11 @@ Phase 5  agent core ................................ █████████
 Phase 6  app shell + wiring ........................ ██████████ 100%   13/13 tests
 Phase 7  the three Skills .......................... ██████████ 100%
 Phase 8  demo fleet (real deploys) ................. ██████████ 100%
-Phase 9  ship: config, README, deploy, video ........ █████████░  90%   ← current
+Phase 9  ship: config, README, deploy, repo ......... ██████████ 100%
 ```
 
-The production product and real demo fleet are complete, deployed and verified.
-Only external publishing artifacts remain: attaching a Git remote and recording
-the prepared judge-demo script.
+The production product, real demo fleet, public repository and judge-demo script
+are complete, deployed and verified.
 
 ---
 
@@ -75,9 +74,9 @@ Seven interview rounds. These are settled; changing one is a re-plan, not a twea
 | Decision | Choice | Why |
 |---|---|---|
 | Name | لیارا کوپایلوت / Liara Copilot | — |
-| Deliverable | live URL + repo + demo video | judged on all three |
-| Deploy target | Liara team **«لیارا»** (`<team-id>`), not personal | that is where the demo fleet lives |
-| Repo | I push it; URL handed over afterwards | — |
+| Deliverable | live URL + repo + judge demo script | judged on all three |
+| Deploy target | team-scoped Liara account, not personal | that is where the demo fleet lives |
+| Repo | [github.com/Hamidrezabayatdev/liara-copilot](https://github.com/Hamidrezabayatdev/liara-copilot) | public referee handoff |
 | Tone | professional **شما**, technical terms in English/Latin | matches docs.liara.ir; mixing scripts mid-sentence is normal Persian technical writing |
 
 ### 2.2 Stack

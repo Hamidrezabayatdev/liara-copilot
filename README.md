@@ -1,16 +1,50 @@
-# Liara Copilot
+<p align="center">
+  <img src="public/liara-logo.svg" width="112" alt="Liara" />
+</p>
 
-دستیار فارسی و RTL لیارا برای پاسخ مستند، مشاهدهٔ زندهٔ حساب و عیب‌یابی
-چندمرحله‌ای—با مسیر مدل متناسب با سختی سؤال، ابزارهای محدود و عملیات قابل تأیید.
+<h1 align="center">Liara Copilot</h1>
 
-**نسخهٔ زنده:** [liara-copilot-ir.liara.run](https://liara-copilot-ir.liara.run)
+<p align="center" dir="rtl">
+  ایجنت فارسی و RTL لیارا برای پاسخ مستند، مشاهدهٔ زندهٔ حساب و عیب‌یابی چندمرحله‌ای؛
+  با مسیر مدل متناسب با سختی سؤال، ابزارهای محدود و عملیات قابل تأیید.
+</p>
+
+<p align="center">
+  <a href="https://liara-copilot-ir.liara.run"><strong>دموی زنده</strong></a>
+  ·
+  <a href="docs/DEMO-SCRIPT.md">سناریوی دو دقیقه‌ای داوری</a>
+  ·
+  <a href="https://liara-copilot-ir.liara.run/api/health">وضعیت سرویس</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Hamidrezabayatdev/liara-copilot/actions/workflows/quality.yml">
+    <img src="https://github.com/Hamidrezabayatdev/liara-copilot/actions/workflows/quality.yml/badge.svg" alt="CI" />
+  </a>
+</p>
+
+![نمای گفت‌وگوی Liara Copilot](docs/assets/liara-copilot-demo.png)
+
+> این پروژه برای هکاتون لیارا ساخته شده و محصول رسمی Liara نیست.
+
+## مسیر سریع داوران
+
+| معیار | شاهد قابل بررسی |
+|---|---|
+| کیفیت پاسخ | RAG روی ۱٬۱۲۵ صفحهٔ رسمی، cutoff تطبیقی، semantic rerank و citation مستقیم |
+| UI و UX | streaming Markdown، نمایش code/table/source/tool، RTL، mobile و اسکرول کنترل‌شده |
+| Agentic و personalization | routing سه‌سطحی، حفظ context، سؤال تکمیلی، اجرای چندمرحله‌ای و پیشنهاد قدم بعد |
+| امنیت و پایداری | allow-list بدون `DELETE`، تأیید HMAC، cookie رمزنگاری‌شده، rate/concurrency guard و telemetry |
+| استقرار لیارا | [نسخهٔ production](https://liara-copilot-ir.liara.run)، health check و [راهنمای deployment](docs/DEPLOYMENT.md) |
+| هزینه | مدل متناسب با intent، ابزار و context پویا، semantic fallback شرطی و هزینهٔ واقعی هر پاسخ |
 
 ## چرا این پروژه متفاوت است؟
 
 - بدون اتصال حساب هم به پرسش‌های عمومی با جست‌وجوی ۱٬۱۲۵ صفحهٔ مستندات رسمی
   و citation پاسخ می‌دهد.
 - برای دادهٔ واقعی، توکن کاربر فقط در cookie رمزنگاری‌شدهٔ `HttpOnly` با عمر
-  هشت ساعت نگه‌داری می‌شود؛ هیچ credential در مرورگر، مدل یا log ذخیره نمی‌شود.
+  هشت ساعت نگه‌داری می‌شود؛ هیچ credential در JavaScript مرورگر، context مدل یا
+  log قرار نمی‌گیرد.
 - بین سه مسیر هزینه/کیفیت انتخاب می‌کند: DeepSeek V4 Flash برای routing،
   GPT-5.6 Luna Pro برای پاسخ، و Gemini 3.7 Flash فقط برای reasoning پیچیده.
 - ابزارها بر اساس intent محدود می‌شوند. هیچ API عمومی یا `DELETE` وجود ندارد و

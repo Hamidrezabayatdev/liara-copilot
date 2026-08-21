@@ -5,7 +5,7 @@
 
 ## 1. حساب
 
-- کار روی **حساب تیمی «لیارا»** انجام می‌شود: `LIARA_TEAM_ID=<team-id>`
+- کار روی **حساب تیمی لیارا** انجام می‌شود؛ شناسه از `LIARA_TEAM_ID` محیط خوانده می‌شود.
 - نقش ما در تیم: **مدیر** — دسترسی `manage` + `create` روی project/database/zone/bucket/mailServer/vm/ai
 - **هر فراخوانی management API باید `?teamID=$LIARA_TEAM_ID` داشته باشد.** بدون آن روی حساب شخصی می‌افتد (که خالی است).
 - هر دو حساب در شروع کار **صفر پروژه** داشتند.
@@ -47,8 +47,8 @@ databases: small-g2 486.11 │ medium-g2 833.33 │ ir-small 972.22 │ standard
 - **`LIARA_AI_BASE_URL=https://ai.liara.ir/api/<workspace-id>/v1`**
   این شکل را خودِ کاتالوگ در `endpoints[].route = /api/{workspaceID}/v1/chat/completions` اعلام می‌کند.
   (شکل `/api/v1/<wsid>` هم برای `/models` جواب داد، ولی به فرم بالا اعتماد می‌کنیم.)
-- کلید AI به workspace **تیمی** `<workspace-name>` (`<workspace-id>`, پلن pro) تعلق دارد.
-  workspace شخصی `hackaton` با این کلید **403** می‌دهد — از آن استفاده نکنید.
+- کلید AI به یک workspace **تیمی** با پلن pro تعلق دارد.
+  workspace شخصی با این کلید **403** می‌دهد — از آن استفاده نکنید.
 - کشف workspace: `GET https://ai.liara.ir/v1/workspaces` با token مدیریتی (نه کلید AI).
 - کاتالوگ عمومی بدون workspace: `GET https://ai.liara.ir/v1/models` → 200. **۱۸۲ مدل.**
 
@@ -176,7 +176,7 @@ POST /v1/databases?teamID=<TEAM>
 
 ## 7. وضعیت فعلی زیرساخت (ساخته شد ✅)
 
-network: `copilot-net` = `<network-id>`
+network: `copilot-net`؛ شناسه در environment/deployment state نگه‌داری می‌شود.
 
 | نام | platform | plan | نقش در دمو |
 |---|---|---|---|

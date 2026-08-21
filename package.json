@@ -2,6 +2,24 @@
   "name": "liara-copilot",
   "version": "0.1.0",
   "private": true,
+  "description": "Persian-first Liara AI agent for grounded answers, live cloud diagnostics, and human-approved actions.",
+  "homepage": "https://liara-copilot-ir.liara.run",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hamidrezabayatdev/liara-copilot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Hamidrezabayatdev/liara-copilot/issues"
+  },
+  "keywords": [
+    "liara",
+    "ai-agent",
+    "rag",
+    "persian",
+    "nextjs",
+    "vercel-ai-sdk"
+  ],
+  "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": ">=22"
   },
