@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 export const metadata: Metadata = {
   title: "Liara Copilot — دستیار هوشمند زیرساخت",
   description:
-    "دستیار عامل‌محور لیارا: تشخیص مشکل، بررسی وضعیت واقعی حساب و انجام تغییرات با تأیید شما.",
+    "دستیار ایجنت‌محور لیارا: تشخیص مشکل، بررسی وضعیت واقعی حساب و انجام تغییرات با تأیید شما.",
 };
 
 export const viewport: Viewport = {
