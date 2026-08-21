@@ -5,11 +5,11 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-full border px-2.5 py-0.5 text-[0.6875rem] font-semibold leading-4 whitespace-nowrap backdrop-blur-md transition-[color,background-color,border-color,box-shadow] [&>svg]:size-3 [&>svg]:pointer-events-none",
+  "inline-flex w-fit shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-0.5 text-[0.6875rem] font-semibold leading-4 whitespace-nowrap transition-colors [&>svg]:size-3 [&>svg]:pointer-events-none",
   {
     variants: {
       variant: {
-        default: "border-primary/20 bg-primary/10 text-primary shadow-[inset_0_1px_color-mix(in_oklab,var(--primary)_12%,transparent)]",
+        default: "border-primary/20 bg-primary/10 text-primary",
         secondary: "border-transparent bg-secondary text-secondary-foreground",
         outline: "border-border text-muted-foreground",
         success: "border-transparent bg-success/14 text-success",

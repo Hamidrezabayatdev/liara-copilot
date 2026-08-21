@@ -93,7 +93,10 @@ function RecentAppEventsCard({
     <Card
       data-slot="recent-app-events-card"
       dir="rtl"
-      className={cn("gap-0 overflow-hidden", className)}
+      className={cn(
+        "gap-0 overflow-hidden rounded-xl bg-card shadow-none backdrop-blur-none transition-none",
+        className,
+      )}
     >
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div className="min-w-0">
@@ -112,7 +115,7 @@ function RecentAppEventsCard({
 
       <CardContent className="pt-3">
         {events.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-7 text-center text-xs text-muted-foreground">
+          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-xs text-muted-foreground">
             API در این بررسی رویدادی برنگرداند.
           </p>
         ) : (
@@ -122,8 +125,13 @@ function RecentAppEventsCard({
                 {index < events.length - 1 ? (
                   <span className="absolute start-[0.4375rem] top-5 h-[calc(100%-0.5rem)] w-px bg-border" />
                 ) : null}
-                <span className="relative mt-1.5 size-3.5 shrink-0 rounded-full border-[3px] border-card bg-primary shadow-[0_0_0_1px_var(--border)]" />
-                <div className="min-w-0 flex-1 rounded-xl border border-border/60 bg-muted/20 px-3 py-2.5 transition-colors hover:border-primary/25 hover:bg-primary/[0.035]">
+                <span className="relative mt-1.5 size-3.5 shrink-0 rounded-full border border-border bg-muted" />
+                <div
+                  className={cn(
+                    "min-w-0 flex-1 border-b border-border/60 px-1 pb-3",
+                    index === events.length - 1 && "border-b-0",
+                  )}
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="secondary" size="sm" dir="ltr">{event.type}</Badge>
                     <Mono title={event.id} className="max-w-44 truncate text-[0.625rem] text-muted-foreground">{event.id}</Mono>
@@ -153,7 +161,10 @@ function ObjectStorageBucketsCard({
     <Card
       data-slot="object-storage-buckets-card"
       dir="rtl"
-      className={cn("gap-0 overflow-hidden", className)}
+      className={cn(
+        "gap-0 overflow-hidden rounded-xl bg-card shadow-none backdrop-blur-none transition-none",
+        className,
+      )}
     >
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div className="min-w-0">
@@ -161,9 +172,6 @@ function ObjectStorageBucketsCard({
             <BoxesIcon className="text-muted-foreground size-4" />
             باکت‌های Object Storage
           </CardTitle>
-          <CardDescription>
-            نام، سطح دسترسی و plan؛ بدون نمایش access key
-          </CardDescription>
         </div>
         <CardAction>
           <ResultCount count={buckets.length} label="باکت" />
@@ -172,7 +180,7 @@ function ObjectStorageBucketsCard({
 
       <CardContent className="pt-3">
         {buckets.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-7 text-center text-xs text-muted-foreground">
+          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-xs text-muted-foreground">
             API در این بررسی باکتی برنگرداند.
           </p>
         ) : (
@@ -180,15 +188,14 @@ function ObjectStorageBucketsCard({
             {buckets.map((bucket, index) => (
               <article
                 key={bucket.id ?? `${bucket.name}-${index}`}
-                className="group rounded-2xl border border-border/65 bg-muted/15 p-3.5 transition-[border-color,background-color,transform] duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.035]"
+                className="rounded-lg border border-border/65 p-3.5 transition-colors hover:border-primary/30"
               >
                 <div className="flex items-start gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/8 text-primary">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-md border border-border bg-muted/40 text-muted-foreground">
                     <BoxesIcon className="size-4" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <Mono className="block truncate text-[0.8125rem] font-semibold">{bucket.name}</Mono>
-                    <p className="mt-0.5 text-[0.625rem] text-muted-foreground">فضای ذخیره‌سازی S3-compatible</p>
                   </div>
                   <Badge variant={bucket.permission === "private" ? "success" : "warning"} size="sm" dir="ltr">
                     {bucket.permission ?? "unknown"}
@@ -249,7 +256,10 @@ function LivePlanCatalogCard({
     <Card
       data-slot="live-plan-catalog-card"
       dir="rtl"
-      className={cn("gap-0 overflow-hidden", className)}
+      className={cn(
+        "gap-0 overflow-hidden rounded-xl bg-card shadow-none backdrop-blur-none transition-none",
+        className,
+      )}
     >
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div className="min-w-0">
@@ -257,9 +267,6 @@ function LivePlanCatalogCard({
             <Icon className="text-muted-foreground size-4" />
             {title}
           </CardTitle>
-          <CardDescription>
-            کاتالوگ زندهٔ حساب؛ قیمت‌ها مستقیماً از Liara خوانده شده‌اند.
-          </CardDescription>
         </div>
         <CardAction>
           <ResultCount count={plans.length} label="plan" />

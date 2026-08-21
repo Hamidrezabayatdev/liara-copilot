@@ -6,10 +6,10 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Liara's live identity: charcoal, cyan/mint light, thin luminous edges and
-   generous curves. The light palette is a quieter console interpretation. */
+/* A restrained console palette. Brand color is reserved for actions and
+   live status instead of decorating every surface. */
 :root {
-  --radius: 1rem;
+  --radius: 0.625rem;
   --background: oklch(0.972 0.009 202);
   --foreground: oklch(0.225 0.018 205);
   --card: oklch(0.995 0.003 205);
@@ -41,8 +41,7 @@
   --brand-cyan: #28c1f5;
   --brand-mint: #87fcc4;
   --brand-ink: #181818;
-  --brand-gradient: linear-gradient(92deg, #87fcc4 0%, #28c1f5 98.77%);
-  --panel-shadow: 0 24px 70px -38px rgb(7 43 52 / 28%);
+  --panel-shadow: 0 8px 24px -18px rgb(7 43 52 / 24%);
 
   --provenance-docs: oklch(0.59 0.145 221);
   --provenance-account: oklch(0.57 0.142 155);
@@ -89,7 +88,7 @@
   --surface: oklch(0.225 0.004 205);
   --surface-foreground: oklch(0.962 0.007 196);
   --elevated: oklch(0.275 0.007 205);
-  --panel-shadow: 0 28px 90px -42px rgb(0 0 0 / 75%);
+  --panel-shadow: 0 8px 24px -18px rgb(0 0 0 / 72%);
 
   --provenance-docs: oklch(0.76 0.142 213);
   --provenance-account: oklch(0.76 0.145 157);
@@ -160,27 +159,21 @@
   --radius-sm: calc(var(--radius) * 0.65);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.35);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.35);
+  --radius-xl: calc(var(--radius) * 1.2);
+  --radius-2xl: calc(var(--radius) * 1.4);
+  --radius-3xl: calc(var(--radius) * 1.6);
   --animate-caret: caret 1s steps(2, start) infinite;
   --animate-step-pulse: step-pulse 1.6s ease-in-out infinite;
   --animate-sheen: sheen 2.2s ease-in-out infinite;
-  --animate-rise: rise 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
-  --animate-panel-in: panel-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-  --animate-float: float 5s ease-in-out infinite;
-  --animate-orbit: orbit 8s linear infinite;
+  --animate-rise: rise 0.24s ease-out both;
   --animate-breathe: breathe 2.4s ease-in-out infinite;
 }
 
 @keyframes caret { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
 @keyframes step-pulse { 0%, 100% { opacity: 0.35; transform: scale(0.82); } 50% { opacity: 1; transform: scale(1); } }
 @keyframes sheen { 0% { transform: translateX(120%); } 55%, 100% { transform: translateX(-150%); } }
-@keyframes rise { from { opacity: 0; transform: translateY(12px) scale(0.992); } to { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes panel-in { from { opacity: 0; transform: translateY(18px); filter: blur(5px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
-@keyframes float { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -8px, 0); } }
-@keyframes orbit { to { transform: rotate(360deg); } }
-@keyframes breathe { 0%, 100% { opacity: 0.42; box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 22%, transparent); } 50% { opacity: 1; box-shadow: 0 0 0 7px color-mix(in oklab, var(--primary) 0%, transparent); } }
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes breathe { 0%, 100% { opacity: 0.42; } 50% { opacity: 1; } }
 
 @layer base {
   * { @apply border-border; }
@@ -190,9 +183,6 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "ss02" 1;
     font-variant-numeric: tabular-nums;
-    background-image:
-      radial-gradient(circle at 73% -18%, color-mix(in oklab, var(--brand-cyan) 13%, transparent), transparent 34%),
-      radial-gradient(circle at 8% 104%, color-mix(in oklab, var(--brand-mint) 9%, transparent), transparent 30%);
   }
   button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
   :where(code, kbd, samp, pre) { @apply font-mono; }
@@ -204,26 +194,6 @@
   unicode-bidi: isolate;
   display: inline-block;
   text-align: start;
-}
-
-@utility liara-gradient-text {
-  color: transparent;
-  background-image: var(--brand-gradient);
-  background-clip: text;
-  -webkit-background-clip: text;
-}
-
-@utility liara-gradient-surface {
-  background: linear-gradient(var(--card), var(--card)) padding-box, var(--brand-gradient) border-box;
-  border: 1px solid transparent;
-}
-
-@utility liara-grid {
-  background-image:
-    linear-gradient(color-mix(in oklab, var(--foreground) 4%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in oklab, var(--foreground) 4%, transparent) 1px, transparent 1px);
-  background-size: 38px 38px;
-  mask-image: linear-gradient(to bottom, black, transparent 92%);
 }
 
 @utility scrollbar-slim {
@@ -276,7 +246,7 @@
 .liara-markdown :where(a:hover) { text-decoration-color: var(--primary); }
 .liara-markdown :where(blockquote) {
   border-inline-start: 2px solid var(--primary);
-  border-radius: 0.65rem;
+  border-radius: 0.4rem;
   background: color-mix(in oklab, var(--primary) 7%, transparent);
   padding: 0.7rem 0.9rem;
   color: var(--muted-foreground);
@@ -286,7 +256,7 @@
   unicode-bidi: isolate;
   display: inline-block;
   border: 1px solid color-mix(in oklab, var(--primary) 22%, var(--border));
-  border-radius: 0.42rem;
+  border-radius: 0.3rem;
   background: color-mix(in oklab, var(--primary) 8%, var(--muted));
   padding-inline: 0.38rem;
   color: var(--foreground);
@@ -296,7 +266,7 @@
   direction: ltr;
   overflow-x: auto;
   border: 1px solid var(--border);
-  border-radius: 0.9rem;
+  border-radius: 0.5rem;
   background: color-mix(in oklab, var(--brand-ink) 92%, var(--card));
   padding: 1rem;
   text-align: left;
@@ -308,7 +278,7 @@
   max-width: 100%;
   overflow-x: auto;
   border-collapse: collapse;
-  border-radius: 0.8rem;
+  border-radius: 0.5rem;
   font-size: 0.78rem;
 }
 .liara-markdown :where(th, td) { border: 1px solid var(--border); padding: 0.55rem 0.7rem; }

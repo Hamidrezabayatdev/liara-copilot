@@ -29,7 +29,7 @@ const RichText = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="h-20 animate-pulse rounded-2xl bg-muted/35"
+        className="h-20 animate-pulse rounded-lg bg-muted/35"
         role="status"
         aria-label="در حال آماده‌سازی نمایش پاسخ"
       />
@@ -57,16 +57,20 @@ export type MessageBubbleProps = {
 function Avatar({ role, streaming = false }: { role: ChatRole; streaming?: boolean }) {
   if (role === "user") {
     return (
-      <span className="mt-1 grid size-8 shrink-0 place-items-center rounded-xl border border-border/70 bg-muted/70 text-muted-foreground shadow-sm">
+      <span className="mt-1 grid size-8 shrink-0 place-items-center rounded-lg border border-border/70 bg-muted/50 text-muted-foreground">
         <CircleUserRoundIcon className="size-4" />
       </span>
     );
   }
 
   return (
-    <span className="relative mt-1 grid size-9 shrink-0 place-items-center rounded-xl bg-[image:var(--brand-gradient)] text-primary-foreground shadow-[0_10px_30px_-12px_var(--brand-cyan)]">
-      {streaming ? <span className="absolute inset-0 animate-breathe rounded-xl" /> : null}
-      <SparklesIcon className="relative size-4" />
+    <span
+      className={cn(
+        "mt-1 grid size-8 shrink-0 place-items-center rounded-lg border bg-muted text-foreground",
+        streaming ? "border-primary/45" : "border-border",
+      )}
+    >
+      <SparklesIcon className="size-4" />
     </span>
   );
 }
@@ -84,10 +88,10 @@ function PendingAnswer() {
             />
           ))}
         </span>
-        <span className="text-xs font-semibold text-foreground/85">در حال طراحی مسیر بررسی…</span>
+        <span className="text-xs font-medium text-foreground/85">در حال بررسی…</span>
       </div>
-      <div className="relative h-1 overflow-hidden rounded-full bg-muted">
-        <span className="absolute inset-y-0 end-0 w-1/2 animate-sheen rounded-full bg-[image:var(--brand-gradient)]" />
+      <div className="relative h-px overflow-hidden bg-border">
+        <span className="absolute inset-y-0 end-0 w-1/2 animate-sheen bg-primary" />
       </div>
     </div>
   );
@@ -116,7 +120,7 @@ function MessageBubble({
         data-role="user"
         className={cn("animate-rise flex justify-end gap-2.5", className)}
       >
-        <div className="liara-gradient-surface max-w-[88%] rounded-2xl rounded-se-md bg-card/80 px-4 py-3 shadow-[var(--panel-shadow)] sm:max-w-[76%]">
+        <div className="max-w-[88%] rounded-xl rounded-se-sm border border-border/70 bg-muted/45 px-4 py-3 sm:max-w-[76%]">
           <p className="text-[0.8125rem] leading-7 whitespace-pre-wrap text-foreground/95">{content}</p>
           {timestamp ? (
             <span dir="ltr" className="ltr-embed mt-1 block text-end text-[0.625rem] text-muted-foreground/70 tabular-nums">
@@ -138,8 +142,8 @@ function MessageBubble({
     >
       <Avatar role="assistant" streaming={streaming || pending} />
 
-      <div className="min-w-0 flex-1 overflow-hidden rounded-3xl rounded-ss-md border border-border/70 bg-card/62 shadow-[var(--panel-shadow)] backdrop-blur-xl">
-        <div className="flex items-center gap-2 border-b border-border/50 bg-muted/15 px-4 py-2.5">
+      <div className="min-w-0 flex-1 overflow-hidden rounded-xl rounded-ss-sm border border-border/70 bg-card">
+        <div className="flex items-center gap-2 border-b border-border/50 px-4 py-2.5">
           <span className="text-[0.6875rem] font-bold">کوپایلت لیارا</span>
           {error ? (
             <span className="inline-flex items-center gap-1.5 text-[0.625rem] text-destructive">
@@ -151,12 +155,7 @@ function MessageBubble({
               <span className="size-1.5 animate-breathe rounded-full bg-primary" />
               در حال کار
             </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-[0.625rem] text-muted-foreground">
-              <span className="size-1.5 rounded-full bg-success" />
-              پاسخ کامل
-            </span>
-          )}
+          ) : null}
           <span className="flex-1" />
           {!streaming && content ? <CopyButton value={content} className="size-7" /> : null}
         </div>
@@ -189,7 +188,7 @@ function MessageBubble({
           {sources && sources.length > 0 ? (
             <Collapsible open={showSources} onOpenChange={setShowSources} className="mt-4">
               <CollapsibleTrigger asChild>
-                <Button variant="subtle" size="sm" className="w-full justify-between rounded-xl">
+                <Button variant="subtle" size="sm" className="w-full justify-between rounded-lg">
                   <span>{sources.length.toLocaleString("fa-IR")} منبع استفاده‌شده</span>
                   <ChevronDownIcon
                     data-icon="inline-end"

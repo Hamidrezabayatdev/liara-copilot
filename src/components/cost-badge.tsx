@@ -3,16 +3,12 @@
 import * as React from "react";
 import {
   AlertTriangleIcon,
-  BrainIcon,
   CoinsIcon,
   DatabaseZapIcon,
-  GaugeIcon,
-  WrenchIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
-  formatCompact,
   formatDuration,
   formatInt,
   formatToman,
@@ -48,7 +44,7 @@ const ESCALATION: Record<
 
 function shortModel(model: string): string {
   if (model.endsWith("deepseek/deepseek-v4-flash")) {
-    return "DeepSeek V4 Flash 0423";
+    return "DeepSeek V4 Flash";
   }
   if (model.endsWith("openai/gpt-5.6-luna")) return "GPT-5.6 Luna";
   if (model.endsWith("google/gemini-3.7-flash")) return "Gemini 3.7 Flash";
@@ -68,26 +64,6 @@ export type CostBadgeProps = {
   baselineToman?: number;
   className?: string;
 };
-
-function Stat({
-  icon: Icon,
-  children,
-  title,
-}: {
-  icon: React.ElementType;
-  children: React.ReactNode;
-  title: string;
-}) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 whitespace-nowrap"
-      title={title}
-    >
-      <Icon className="size-3 opacity-60" />
-      {children}
-    </span>
-  );
-}
 
 /**
  * Per-message accounting strip (spec §17). Compact inline by default; the
@@ -116,7 +92,7 @@ function CostBadge({
       <PopoverTrigger
         data-slot="cost-badge"
         className={cn(
-          "text-muted-foreground hover:text-foreground hover:border-border focus-visible:ring-ring/40 group inline-flex max-w-full flex-wrap items-center gap-x-2.5 gap-y-1 rounded-full border border-transparent px-2 py-1 text-[0.625rem] transition-colors outline-none focus-visible:ring-[3px]",
+          "text-muted-foreground hover:text-foreground hover:border-border focus-visible:ring-ring/40 group inline-flex max-w-full flex-nowrap items-center gap-x-2 rounded-md border border-transparent px-2 py-1 text-[0.6875rem] transition-colors outline-none focus-visible:ring-[3px]",
           "hover:bg-muted/50 data-[state=open]:bg-muted/60 data-[state=open]:border-border",
           className,
         )}
@@ -136,36 +112,22 @@ function CostBadge({
         </span>
         <span className={cn("font-semibold", esc.tone)}>{esc.label}</span>
         <Separator orientation="vertical" className="h-3" />
-        <Mono className="text-[0.625rem]">{shortModel(usage.model)}</Mono>
-        <Stat
-          icon={CoinsIcon}
+        <Mono className="text-[0.6875rem]">{shortModel(usage.model)}</Mono>
+        <span
+          className="inline-flex items-center gap-1 whitespace-nowrap"
           title={
             usage.costComplete === false
               ? "کمینهٔ هزینهٔ ثبت‌شده برای این پیام"
               : "هزینهٔ واقعی این پیام"
           }
         >
+          <CoinsIcon className="size-3 opacity-60" />
           <span dir="ltr" className="ltr-embed font-mono tabular-nums">
             {usage.costComplete === false ? "≥" : ""}
             {formatToman(usage.toman)}
           </span>
           <span>تومان</span>
-        </Stat>
-        <Stat icon={BrainIcon} title="توکن ورودی / خروجی">
-          <span dir="ltr" className="ltr-embed font-mono tabular-nums">
-            {formatCompact(usage.promptTokens)}/{formatCompact(usage.completionTokens)}
-          </span>
-        </Stat>
-        <Stat icon={WrenchIcon} title="تعداد tool call">
-          <span dir="ltr" className="ltr-embed font-mono tabular-nums">
-            {formatInt(usage.toolCalls)}
-          </span>
-        </Stat>
-        <Stat icon={GaugeIcon} title="زمان پاسخ">
-          <span dir="ltr" className="ltr-embed font-mono tabular-nums">
-            {formatDuration(usage.latencyMs)}
-          </span>
-        </Stat>
+        </span>
       </PopoverTrigger>
 
       <PopoverContent align="end" className="w-88">
@@ -176,7 +138,7 @@ function CostBadge({
           <span className="flex-1" />
           <span
             className={cn(
-              "rounded-full border px-1.5 py-0.5 text-[0.625rem] font-semibold",
+              "rounded-md border px-1.5 py-0.5 text-[0.625rem] font-semibold",
               esc.tone,
               "border-border bg-muted",
             )}

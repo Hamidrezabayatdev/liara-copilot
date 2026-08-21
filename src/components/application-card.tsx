@@ -111,10 +111,10 @@ function MetricStat({
 /** Loading placeholder with the same footprint as a populated card. */
 function ApplicationCardSkeleton({ className }: { className?: string }) {
   return (
-    <Card className={cn("gap-0", className)}>
+    <Card className={cn("gap-0 rounded-xl bg-card shadow-none backdrop-blur-none", className)}>
       <div className="flex items-center gap-3 px-4 pt-4">
         <Skeleton className="size-9 rounded-md" />
-        <div className="flex-1 space-y-2">
+        <div className="flex flex-1 flex-col gap-2">
           <Skeleton className="h-3 w-32" />
           <Skeleton className="h-2.5 w-20" />
         </div>
@@ -160,7 +160,7 @@ function ApplicationCard({
               ? "border-border bg-muted text-muted-foreground"
               : app.status === "UNHEALTHY"
                 ? "border-destructive/30 bg-destructive/10 text-destructive"
-                : "border-primary/25 bg-primary/10 text-primary",
+                : "border-border bg-muted/40 text-muted-foreground",
           )}
         >
           <Icon className="size-4.5" />
@@ -314,10 +314,10 @@ function ApplicationCard({
       data-slot="application-card"
       data-active={active || undefined}
       className={cn(
-        "gap-0 overflow-hidden border-primary/15 bg-card/72 transition-[border-color,box-shadow,transform] duration-300",
+        "gap-0 overflow-hidden rounded-xl border-border/75 bg-card shadow-none backdrop-blur-none transition-colors duration-200",
         interactive &&
-          "hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-lg focus-within:border-primary/45",
-        active && "border-primary/60 ring-primary/20 ring-2",
+          "hover:border-primary/40 focus-within:border-primary/45",
+        active && "border-primary/60 ring-1 ring-primary/20",
         className,
       )}
     >
@@ -335,7 +335,7 @@ function ApplicationCard({
       )}
 
       {onViewLogs || onViewDeployments || app.subdomain ? (
-        <div className="border-border/70 bg-muted/25 flex flex-wrap items-center gap-1.5 border-t px-3 py-2">
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-border/70 px-3 py-2">
           {app.subdomain ? (
             <Tooltip>
               <TooltipTrigger asChild>

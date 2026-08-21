@@ -129,12 +129,36 @@ function AgentChecklist({
   const total = steps.length;
   const progress = total === 0 ? 0 : (completed / total) * 100;
 
+  if (
+    dense &&
+    total > 0 &&
+    completed === total &&
+    !failed &&
+    !running &&
+    !loading &&
+    !error
+  ) {
+    return (
+      <section
+        data-slot="agent-checklist"
+        className={cn(
+          "flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs text-muted-foreground",
+          className,
+        )}
+        aria-label={`${total.toLocaleString("fa-IR")} بررسی انجام شد`}
+      >
+        <CheckIcon className="size-3.5 text-success" aria-hidden />
+        <span>{total.toLocaleString("fa-IR")} بررسی انجام شد</span>
+      </section>
+    );
+  }
+
   return (
     <section
       data-slot="agent-checklist"
       aria-busy={running || loading}
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-primary/20 bg-card/65 shadow-[var(--panel-shadow)] backdrop-blur-xl",
+        "relative overflow-hidden rounded-lg border border-border bg-card",
         className,
       )}
     >
@@ -171,7 +195,7 @@ function AgentChecklist({
         <div
           className={cn(
             "h-full rounded-full transition-[width] duration-500 ease-out",
-            failed ? "bg-destructive" : "bg-[image:var(--brand-gradient)]",
+            failed ? "bg-destructive" : "bg-primary",
           )}
           style={{ width: `${progress}%` }}
         />
@@ -202,8 +226,7 @@ function AgentChecklist({
             return (
               <li
                 key={step.id}
-                className={cn("animate-rise flex gap-3 rounded-xl transition-colors", isActive && "bg-primary/[0.045]")}
-                style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
+                className={cn("flex gap-3 rounded-md transition-colors", isActive && "bg-primary/[0.045]")}
               >
                 <div className="flex flex-col items-center">
                   <StepMarker state={step.state} />

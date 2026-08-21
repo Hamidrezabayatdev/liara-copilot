@@ -32,7 +32,7 @@ const PROVENANCE: Record<Provenance, ProvenanceMeta> = {
     label: "مستندات رسمی",
     icon: BookOpenTextIcon,
     fg: "text-provenance-docs",
-    chip: "border-provenance-docs/35 bg-provenance-docs/12",
+    chip: "border-provenance-docs/35",
     rail: "bg-provenance-docs",
     meaning: "نقل مستقیم از docs.liara.ir",
   },
@@ -40,7 +40,7 @@ const PROVENANCE: Record<Provenance, ProvenanceMeta> = {
     label: "وضعیت حساب شما",
     icon: ServerCogIcon,
     fg: "text-provenance-account",
-    chip: "border-provenance-account/35 bg-provenance-account/12",
+    chip: "border-provenance-account/35",
     rail: "bg-provenance-account",
     meaning: "مشاهدهٔ زندهٔ منابع همین حساب",
   },
@@ -48,7 +48,7 @@ const PROVENANCE: Record<Provenance, ProvenanceMeta> = {
     label: "استنتاج",
     icon: LightbulbIcon,
     fg: "text-provenance-inference",
-    chip: "border-provenance-inference/40 bg-provenance-inference/12 border-dashed",
+    chip: "border-provenance-inference/40 border-dashed",
     rail: "bg-provenance-inference",
     meaning: "نتیجه‌گیری دستیار — در مستندات صریح نیست",
   },
@@ -106,7 +106,7 @@ function SourceCardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-border/75 bg-card/70 ps-2.5 shadow-[var(--panel-shadow)]",
+        "relative overflow-hidden rounded-lg border border-border/75 bg-card ps-2.5",
         className,
       )}
     >
@@ -183,13 +183,7 @@ function SourceCard({
       </div>
 
       {!compact ? (
-        <p
-          className={cn(
-            "text-muted-foreground mt-2 px-3 pb-3 text-xs leading-6",
-            source.kind === "docs" &&
-              "mx-3 mt-2 rounded-xl border border-border/55 bg-muted/25 px-3 py-2.5",
-          )}
-        >
+        <p className="mt-2 px-3 pb-3 text-xs leading-6 text-muted-foreground">
           {source.snippet}
         </p>
       ) : (
@@ -199,7 +193,7 @@ function SourceCard({
   );
 
   const base = cn(
-    "relative block overflow-hidden rounded-2xl border bg-card/65 text-start shadow-[var(--panel-shadow)] backdrop-blur-md transition-[border-color,box-shadow,transform] duration-300",
+    "relative block overflow-hidden rounded-lg border bg-card text-start transition-colors duration-200",
     source.kind === "inference" ? "border-dashed border-border" : "border-border/80",
     className,
   );
@@ -213,7 +207,7 @@ function SourceCard({
         rel="noreferrer noopener"
         className={cn(
           base,
-          "hover:-translate-y-0.5 hover:border-provenance-docs/50 hover:shadow-lg focus-visible:ring-ring/40 outline-none focus-visible:ring-[3px]",
+          "hover:border-provenance-docs/50 focus-visible:ring-ring/40 outline-none focus-visible:ring-[3px]",
         )}
       >
         {inner}

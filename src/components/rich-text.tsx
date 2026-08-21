@@ -67,7 +67,6 @@ const RichText = React.memo(function RichText({
       lineNumbers
       className={cn(
         "liara-markdown text-[0.875rem] leading-7 text-foreground/90",
-        streaming && "drop-shadow-[0_0_14px_color-mix(in_oklab,var(--primary)_10%,transparent)]",
         className,
       )}
     >

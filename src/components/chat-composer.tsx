@@ -50,7 +50,7 @@ function ChatComposer({
   streaming = false,
   onStop,
   disabled = false,
-  placeholder = "چه کاری برایتان انجام دهم؟ مثلاً: چرا digishop-api جواب ۵۰۲ می‌دهد؟",
+  placeholder = "پیامتان را بنویسید…",
   suggestions = [],
   contextLabel,
   maxLength = 4000,
@@ -111,7 +111,7 @@ function ChatComposer({
                 setText(s.value ?? s.label);
                 ref.current?.focus();
               }}
-              className="rounded-full"
+              className="rounded-md"
             >
               {s.label}
             </Button>
@@ -121,13 +121,13 @@ function ChatComposer({
 
       <div
         className={cn(
-          "liara-gradient-surface bg-card/92 focus-within:ring-primary/10 relative overflow-hidden rounded-[1.35rem] shadow-[0_20px_65px_-32px_color-mix(in_oklab,var(--brand-cyan)_55%,transparent)] backdrop-blur-2xl transition-[box-shadow,transform] duration-300 focus-within:ring-4",
+          "bg-card focus-within:border-ring focus-within:ring-ring/20 relative overflow-hidden rounded-lg border border-border shadow-sm transition-[border-color,box-shadow] duration-200 focus-within:ring-2",
           disabled && "opacity-60",
         )}
       >
         {streaming ? (
-          <span className="absolute inset-x-0 top-0 h-px overflow-hidden" aria-hidden>
-            <span className="absolute inset-y-0 end-0 w-1/2 animate-sheen bg-[image:var(--brand-gradient)]" />
+          <span className="absolute inset-x-0 top-0 h-px overflow-hidden bg-primary/20" aria-hidden>
+            <span className="absolute inset-y-0 end-0 w-1/3 animate-sheen bg-primary" />
           </span>
         ) : null}
         {contextLabel ? (
@@ -138,7 +138,7 @@ function ChatComposer({
             </span>
             <span
               dir="ltr"
-              className="ltr-embed bg-muted text-foreground border-border rounded-full border px-1.5 py-px font-mono text-[0.625rem]"
+              className="ltr-embed bg-muted text-foreground border-border rounded-sm border px-1.5 py-px font-mono text-[0.625rem]"
             >
               {contextLabel}
             </span>
@@ -156,20 +156,10 @@ function ChatComposer({
           onKeyDown={onKeyDown}
           onChange={(e) => setText(e.target.value)}
           aria-label="پیام به دستیار"
-          className="scrollbar-slim placeholder:text-muted-foreground/65 block w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-start text-[0.875rem] leading-7 outline-none disabled:cursor-not-allowed sm:px-5"
+          className="scrollbar-slim placeholder:text-muted-foreground/65 block w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-start text-[0.875rem] leading-7 outline-none disabled:cursor-not-allowed sm:px-4"
         />
 
         <div className="flex items-center gap-2 px-3 pt-0.5 pb-2.5 sm:px-4">
-          <span className="text-muted-foreground/70 hidden text-[0.625rem] sm:inline">
-            <kbd className="border-border bg-muted rounded-[0.25rem] border px-1 py-px font-sans">
-              Enter
-            </kbd>{" "}
-            ارسال ·{" "}
-            <kbd className="border-border bg-muted rounded-[0.25rem] border px-1 py-px font-sans">
-              Shift + Enter
-            </kbd>{" "}
-            خط جدید
-          </span>
           <span className="flex-1" />
           {remaining < 200 ? (
             <span
@@ -189,7 +179,7 @@ function ChatComposer({
               size="sm"
               onClick={onStop}
               aria-label="توقف پاسخ"
-              className="rounded-full"
+              className="rounded-md"
             >
               <SquareIcon data-icon="inline-start" className="fill-current" />
               توقف
@@ -201,7 +191,7 @@ function ChatComposer({
               onClick={send}
               disabled={!canSend}
               aria-label="ارسال پیام"
-              className="rounded-full shadow-[0_8px_24px_-10px_var(--brand-cyan)]"
+              className="rounded-md"
             >
               <ArrowUpIcon />
             </Button>

@@ -48,10 +48,13 @@ function DatabaseCard({ database, compact = false, className }: DatabaseCardProp
   return (
     <Card
       data-slot="database-card"
-      className={cn("gap-0 border-primary/15 bg-card/72", className)}
+      className={cn(
+        "gap-0 rounded-xl border-border/75 bg-card shadow-none backdrop-blur-none transition-none",
+        className,
+      )}
     >
       <CardHeader className="flex-row items-start gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-primary/25 bg-primary/10 text-primary shadow-[0_10px_28px_-18px_var(--brand-cyan)]">
+        <span className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-muted/40 text-muted-foreground">
           <DatabaseIcon className="size-4.5" />
         </span>
         <div className="min-w-0 flex-1">
@@ -71,23 +74,23 @@ function DatabaseCard({ database, compact = false, className }: DatabaseCardProp
       </CardHeader>
 
       <CardContent className="pt-3">
-        <dl className={cn("grid gap-3", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4")}>
-          <div className="rounded-xl border border-border/55 bg-muted/20 px-3 py-2.5">
+        <dl className={cn("grid gap-x-4 gap-y-3", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4")}>
+          <div className="min-w-0">
             <dt className="text-[0.625rem] text-muted-foreground">پلن</dt>
             <dd className="mt-1"><Mono className="font-semibold">{database.planId}</Mono></dd>
           </div>
-          <div className="rounded-xl border border-border/55 bg-muted/20 px-3 py-2.5">
+          <div className="min-w-0">
             <dt className="text-[0.625rem] text-muted-foreground">ناحیه</dt>
             <dd className="mt-1"><Mono className="font-semibold">{database.region}</Mono></dd>
           </div>
-          <div className="rounded-xl border border-border/55 bg-muted/20 px-3 py-2.5">
+          <div className="min-w-0">
             <dt className="text-[0.625rem] text-muted-foreground">شبکه</dt>
             <dd className="mt-1 inline-flex items-center gap-1.5 text-[0.75rem] font-semibold">
               <NetworkIcon className="size-3.5 text-muted-foreground" />
               {database.network ? <Mono>{database.network}</Mono> : "مستقل"}
             </dd>
           </div>
-          <div className="rounded-xl border border-border/55 bg-muted/20 px-3 py-2.5">
+          <div className="min-w-0">
             <dt className="text-[0.625rem] text-muted-foreground">پورت داخلی</dt>
             <dd className="mt-1 text-[0.75rem] font-semibold">
               {database.internalPort ? <Mono>{database.internalPort}</Mono> : "خودکار"}
@@ -101,7 +104,7 @@ function DatabaseCard({ database, compact = false, className }: DatabaseCardProp
         ) : null}
       </CardContent>
 
-      <CardFooter className="bg-muted/15">
+      <CardFooter>
         {database.publicNetwork ? (
           <>
             <Globe2Icon className="size-3.5 text-warning" />

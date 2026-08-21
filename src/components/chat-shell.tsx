@@ -12,23 +12,16 @@ import {
 } from "ai";
 import {
   CheckCircle2Icon,
-  ActivityIcon,
   ArrowDownIcon,
-  ArrowLeftIcon,
   BookOpenTextIcon,
   BoxesIcon,
   ChevronDownIcon,
   CircleXIcon,
   DatabaseIcon,
-  GaugeIcon,
   Globe2Icon,
-  Layers3Icon,
   LoaderCircleIcon,
-  RouteIcon,
-  SearchCheckIcon,
   ShieldCheckIcon,
   Trash2Icon,
-  WandSparklesIcon,
 } from "lucide-react";
 
 import { ApplicationCard } from "@/components/application-card";
@@ -50,10 +43,6 @@ import { EnvEditor } from "@/components/env-editor";
 import { LogViewer } from "@/components/log-viewer";
 import { MessageBubble } from "@/components/message-bubble";
 import { MetricsPanel } from "@/components/metrics-panel";
-import {
-  SessionCostFooter,
-  type ModelUsageBreakdown,
-} from "@/components/session-cost-footer";
 import { SourceCard } from "@/components/source-card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -81,20 +70,13 @@ import type {
   LogLine,
   LogSeverity,
   MetricSeries,
+  ModelUsageItem,
   Source,
   UsageMeta,
 } from "@/components/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Collapsible,
   CollapsibleContent,
@@ -123,34 +105,9 @@ import { cn } from "@/lib/utils";
 const transport = new DefaultChatTransport({ api: "/api/chat" });
 
 const HERO_PROMPTS = [
-  {
-    id: "diagnose",
-    eyebrow: "عیب‌یابی زنده",
-    label: "چرا digishop-api خطای ۵۰۲ می‌دهد؟",
-    detail: "لاگ، رویداد و متریک‌ها را کنار هم بررسی کن",
-    icon: SearchCheckIcon,
-  },
-  {
-    id: "inventory",
-    eyebrow: "نمای حساب",
-    label: "وضعیت برنامه‌ها و دیتابیس‌های من چطور است؟",
-    detail: "منابع واقعی حساب را خلاصه و اولویت‌بندی کن",
-    icon: Layers3Icon,
-  },
-  {
-    id: "docs",
-    eyebrow: "مستندات رسمی",
-    label: "برای deploy امن Next.js چه تنظیماتی لازم است؟",
-    detail: "پاسخ کوتاه با دقیق‌ترین منابع مرتبط",
-    icon: BookOpenTextIcon,
-  },
-  {
-    id: "cost",
-    eyebrow: "بهینه‌سازی",
-    label: "برای کم‌کردن هزینهٔ این سرویس چه پیشنهاد داری؟",
-    detail: "پلن و مصرف را بدون افت عملکرد تحلیل کن",
-    icon: GaugeIcon,
-  },
+  "چرا digishop-api خطای ۵۰۲ می‌دهد؟",
+  "وضعیت برنامه‌ها و دیتابیس‌های من چطور است؟",
+  "برای deploy امن Next.js چه تنظیماتی لازم است؟",
 ] as const;
 
 const RESOURCE_PROMPTS = [
@@ -600,7 +557,7 @@ function messageUsage(metadata: unknown): {
 
   const modelBreakdown = Array.isArray(raw.modelBreakdown)
     ? raw.modelBreakdown
-        .map((item): ModelUsageBreakdown | null => {
+        .map((item): ModelUsageItem | null => {
           if (!isRecord(item)) return null;
           const itemModel = stringField(item, "model");
           if (!itemModel || !isFiniteNumber(item.calls) || !isFiniteNumber(item.toman)) {
@@ -608,7 +565,7 @@ function messageUsage(metadata: unknown): {
           }
           return { model: itemModel, calls: item.calls, toman: item.toman };
         })
-        .filter((item): item is ModelUsageBreakdown => item !== null)
+        .filter((item): item is ModelUsageItem => item !== null)
     : undefined;
 
   const model = stringField(raw, "model");
@@ -653,68 +610,6 @@ function messageUsage(metadata: unknown): {
       modelBreakdown,
     },
   };
-}
-
-type SessionTotals = {
-  messages: number;
-  totalToman: number;
-  baselineToman: number;
-  totalPromptTokens: number;
-  totalCompletionTokens: number;
-  cachedTokens: number;
-  toolCalls: number;
-  breakdown: ModelUsageBreakdown[];
-  baselineAvailable: boolean;
-  costComplete: boolean;
-};
-
-function sessionTotals(messages: UIMessage[]): SessionTotals {
-  const totals: Omit<SessionTotals, "breakdown"> = {
-    messages: 0,
-    totalToman: 0,
-    baselineToman: 0,
-    totalPromptTokens: 0,
-    totalCompletionTokens: 0,
-    cachedTokens: 0,
-    toolCalls: 0,
-    baselineAvailable: true,
-    costComplete: true,
-  };
-  const byModel = new Map<string, ModelUsageBreakdown>();
-
-  for (const message of messages) {
-    if (message.role !== "assistant") continue;
-    const metadata = messageUsage(message.metadata);
-    if (!metadata.usage) continue;
-
-    const usage = metadata.usage;
-    totals.messages += 1;
-    totals.totalToman += usage.toman;
-    if (usage.costComplete === false) totals.costComplete = false;
-    if (typeof metadata.baselineToman === "number" && metadata.baselineToman > 0) {
-      totals.baselineToman += metadata.baselineToman;
-    } else {
-      totals.baselineAvailable = false;
-    }
-    totals.totalPromptTokens += usage.promptTokens;
-    totals.totalCompletionTokens += usage.completionTokens;
-    totals.cachedTokens += usage.cachedTokens ?? 0;
-    totals.toolCalls += usage.toolCalls;
-
-    const breakdown = usage.modelBreakdown?.length
-      ? usage.modelBreakdown
-      : [{ model: usage.model, calls: 1, toman: usage.toman }];
-    for (const item of breakdown) {
-      const current = byModel.get(item.model);
-      byModel.set(item.model, {
-        model: item.model,
-        calls: (current?.calls ?? 0) + item.calls,
-        toman: (current?.toman ?? 0) + item.toman,
-      });
-    }
-  }
-
-  return { ...totals, breakdown: [...byModel.values()] };
 }
 
 function messageText(message: UIMessage): string {
@@ -925,17 +820,14 @@ function ToolStatus({
   return (
     <Alert
       variant={meta.variant}
-      className={cn(
-        "animate-rise bg-card/55",
-        state === "loading" && "border-primary/35 shadow-[0_12px_36px_-28px_var(--brand-cyan)]",
-      )}
+      className={cn("animate-rise bg-card", state === "loading" && "border-primary/35")}
     >
       <Icon className={state === "loading" ? "animate-spin" : undefined} />
       <AlertTitle>{label}</AlertTitle>
       <AlertDescription>{meta.text}</AlertDescription>
       {state === "loading" ? (
         <span className="absolute inset-x-0 bottom-0 h-px overflow-hidden" aria-hidden>
-          <span className="absolute inset-y-0 end-0 w-1/2 animate-sheen bg-[image:var(--brand-gradient)]" />
+          <span className="absolute inset-y-0 end-0 w-1/2 animate-sheen bg-primary" />
         </span>
       ) : null}
     </Alert>
@@ -946,7 +838,7 @@ function DocsEvidence({ sources }: { sources: Source[] }) {
   const [open, setOpen] = React.useState(sources.length === 1);
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-2xl border border-provenance-docs/25 bg-provenance-docs/[0.045] p-2">
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border border-border p-2">
       <CollapsibleTrigger asChild>
         <Button variant="ghost" size="sm" className="w-full justify-between rounded-xl">
           <span className="inline-flex items-center gap-2">
@@ -1346,185 +1238,21 @@ function EmptyChat({
   onPrompt: (prompt: string) => void;
 }) {
   return (
-    <div className="relative flex flex-1 items-start justify-start py-4 sm:items-center sm:justify-center sm:py-10">
-      <div className="pointer-events-none absolute inset-x-[8%] top-[8%] h-52 rounded-full bg-primary/10 blur-3xl" />
-      <Card className="liara-gradient-surface w-full max-w-3xl bg-card/88">
-        <div className="liara-grid pointer-events-none absolute inset-0 opacity-70" />
-        <CardHeader className="relative items-center px-5 pt-8 text-center sm:px-10 sm:pt-11">
-          <div className="relative mb-2">
-            <span className="absolute inset-0 animate-orbit rounded-full border border-dashed border-primary/25" />
-            <span className="relative m-2 grid size-14 place-items-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-[0_0_36px_-12px_var(--brand-cyan)] backdrop-blur-xl">
-              <WandSparklesIcon className="size-6" />
-            </span>
-          </div>
-          <Badge variant="default">همکار هوشمند زیرساخت لیارا</Badge>
-          <CardTitle className="mt-2 max-w-xl text-2xl leading-[1.55] sm:text-4xl">
-            زیرساختت را بفهم، عیب‌یابی کن و با خیال راحت
-            <span className="liara-gradient-text ms-2 inline-block">تغییر بده</span>
-          </CardTitle>
-          <CardDescription className="mt-1 max-w-xl text-[0.8125rem] leading-7 sm:text-sm">
-            کوپایلت شواهد مستندات و وضعیت زندهٔ حساب را ترکیب می‌کند، مسیر کار را
-            قدم‌به‌قدم نشان می‌دهد و هیچ تغییری را بدون تأیید تو اجرا نمی‌کند.
-          </CardDescription>
-        </CardHeader>
+    <div className="flex flex-1 items-start justify-center py-10 sm:items-center">
+      <section className="w-full max-w-2xl" aria-labelledby="empty-chat-title">
+        <div className="mb-6 text-center">
+          <h2 id="empty-chat-title" className="text-xl font-semibold sm:text-2xl">
+            چه چیزی را بررسی کنیم؟
+          </h2>
+          <p className="text-muted-foreground mt-2 text-sm">
+            دربارهٔ منابع حساب یا مستندات لیارا بپرسید.
+          </p>
+        </div>
 
-        <CardContent className="relative flex flex-col gap-5 px-4 sm:px-8">
-          <div className="flex flex-wrap items-center justify-center gap-2" aria-label="دسترسی سریع به منابع">
-            {RESOURCE_PROMPTS.map((resource) => {
-              const Icon = resource.icon;
-              return (
-                <Button
-                  key={resource.label}
-                  type="button"
-                  variant="subtle"
-                  size="sm"
-                  disabled={disabled}
-                  onClick={() => onPrompt(resource.prompt)}
-                  className="rounded-full"
-                >
-                  <Icon data-icon="inline-start" />
-                  {resource.label}
-                </Button>
-              );
-            })}
-          </div>
-
-          <div className="grid gap-2.5 sm:grid-cols-2">
-          {HERO_PROMPTS.map((prompt) => {
-            const Icon = prompt.icon;
-            return (
-              <Button
-                key={prompt.id}
-                type="button"
-                variant="outline"
-                disabled={disabled}
-                onClick={() => onPrompt(prompt.label)}
-                className="group h-auto min-h-24 items-start justify-start rounded-2xl px-4 py-3.5 text-start whitespace-normal"
-              >
-                <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/8 text-primary transition-transform duration-300 group-hover:scale-105">
-                  <Icon className="size-4.5" />
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
-                  <span className="text-primary text-[0.625rem] font-bold tracking-wide">
-                    {prompt.eyebrow}
-                  </span>
-                  <span className="text-foreground text-xs leading-6 font-semibold sm:text-[0.8125rem]">
-                    {prompt.label}
-                  </span>
-                  <span className="text-muted-foreground text-[0.625rem] leading-5 font-normal">
-                    {prompt.detail}
-                  </span>
-                </span>
-                <ArrowLeftIcon className="mt-1 shrink-0 text-muted-foreground transition-transform duration-300 group-hover:-translate-x-1 group-hover:text-primary" />
-              </Button>
-            );
-          })}
-          </div>
-        </CardContent>
-
-        <CardFooter className="relative flex-wrap justify-center gap-x-5 gap-y-2 bg-muted/20 text-center">
-          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-[0.6875rem] leading-5">
-            <RouteIcon className="size-3.5 text-primary" />
-            مسیریابی خودکار و کم‌هزینه
-          </span>
-          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-[0.6875rem] leading-5">
-            <ShieldCheckIcon className="size-3.5 text-success" />
-            اطلاعات حساس همیشه پوشیده می‌مانند
-          </span>
-        </CardFooter>
-      </Card>
-    </div>
-  );
-}
-
-type ChatRunStatus = "submitted" | "streaming" | "ready" | "error";
-
-function shortModelName(model?: string): string {
-  if (!model) return "انتخاب خودکار";
-  if (model.includes("luna")) return "GPT-5.6 Luna";
-  if (model.includes("gemini")) return "Gemini 3.7 Flash";
-  if (model.includes("deepseek")) return "DeepSeek V4 Flash 0423";
-  return model.split("/").at(-1) ?? model;
-}
-
-function WorkspaceRail({
-  status,
-  pendingApproval,
-  activeTool,
-  model,
-  hasConversation,
-  onPrompt,
-}: {
-  status: ChatRunStatus;
-  pendingApproval: boolean;
-  activeTool?: string;
-  model?: string;
-  hasConversation: boolean;
-  onPrompt: (prompt: string) => void;
-}) {
-  const working = status === "submitted" || status === "streaming";
-  const stages = [
-    {
-      label: "انتخاب مسیر کم‌هزینه",
-      detail: status === "ready" ? "آماده برای سؤال بعدی" : shortModelName(model),
-      state: status === "submitted" ? "running" : working || pendingApproval || hasConversation ? "done" : "idle",
-    },
-    {
-      label: activeTool ? TOOL_LABELS[activeTool] ?? "بررسی شواهد" : "بررسی شواهد مرتبط",
-      detail: activeTool ? "فقط دادهٔ لازم دریافت می‌شود" : "مستندات و وضعیت حساب",
-      state: status === "streaming" ? "running" : pendingApproval || (hasConversation && Boolean(activeTool)) ? "done" : "idle",
-    },
-    {
-      label: pendingApproval ? "منتظر تصمیم شما" : "ساخت پاسخ قابل اقدام",
-      detail: pendingApproval ? "هیچ تغییری هنوز اجرا نشده" : "همراه با منبع و هزینهٔ واقعی",
-      state: pendingApproval ? "running" : status === "streaming" ? "running" : hasConversation && status === "ready" ? "done" : "idle",
-    },
-  ] as const;
-
-  return (
-    <aside className="hidden w-72 shrink-0 flex-col border-e border-border/55 bg-surface/45 px-4 py-5 backdrop-blur-xl xl:flex">
-      <div className="flex flex-col gap-5">
-        <section className="rounded-2xl border border-border/70 bg-card/55 p-4 shadow-[var(--panel-shadow)]">
-          <div className="flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
-              <ActivityIcon className="size-4" />
-            </span>
-            <div>
-              <h2 className="text-xs font-bold">مسیر اجرای کوپایلت</h2>
-              <p className="text-muted-foreground mt-0.5 text-[0.625rem]">
-                همیشه می‌دانی چه چیزی در حال بررسی است
-              </p>
-            </div>
-          </div>
-
-          <ol className="mt-4 flex flex-col gap-0">
-            {stages.map((stage, index) => (
-              <li key={stage.label} className="relative flex gap-3 pb-4 last:pb-0">
-                {index < stages.length - 1 ? (
-                  <span className="absolute start-[0.34375rem] top-4 h-[calc(100%-0.5rem)] w-px bg-border" />
-                ) : null}
-                <span
-                  className={cn(
-                    "relative mt-1 size-3 shrink-0 rounded-full border-2 border-surface",
-                    stage.state === "running" && "animate-breathe bg-primary",
-                    stage.state === "done" && "bg-success",
-                    stage.state === "idle" && "bg-muted-foreground/35",
-                  )}
-                />
-                <div className="min-w-0">
-                  <p className={cn("text-[0.6875rem] font-semibold", stage.state === "running" && "text-primary")}>{stage.label}</p>
-                  <p className="text-muted-foreground mt-0.5 text-[0.625rem] leading-5">{stage.detail}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        <nav aria-label="منابع لیارا" className="flex flex-col gap-2">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-muted-foreground text-[0.6875rem] font-bold">منابع سریع</h2>
-            <span className="text-muted-foreground/60 text-[0.5625rem]">فقط خواندنی</span>
-          </div>
+        <div
+          className="mb-4 flex flex-wrap items-center justify-center gap-2"
+          aria-label="دسترسی سریع به منابع"
+        >
           {RESOURCE_PROMPTS.map((resource) => {
             const Icon = resource.icon;
             return (
@@ -1533,28 +1261,33 @@ function WorkspaceRail({
                 type="button"
                 variant="ghost"
                 size="sm"
+                disabled={disabled}
                 onClick={() => onPrompt(resource.prompt)}
-                className="justify-start rounded-xl"
+                className="rounded-lg"
               >
                 <Icon data-icon="inline-start" />
                 {resource.label}
-                <ArrowLeftIcon data-icon="inline-end" className="ms-auto opacity-45" />
               </Button>
             );
           })}
-        </nav>
-      </div>
-
-      <div className="mt-auto rounded-2xl border border-primary/20 bg-primary/[0.055] p-3.5">
-        <div className="flex items-center gap-2 text-primary">
-          <ShieldCheckIcon className="size-4" />
-          <p className="text-[0.6875rem] font-bold">حالت امن همیشه روشن است</p>
         </div>
-        <p className="text-muted-foreground mt-1.5 text-[0.625rem] leading-5">
-          مشاهده‌ها خودکارند؛ هر عملیات نوشتنی فقط بعد از نمایش تغییر و تأیید تو اجرا می‌شود.
-        </p>
-      </div>
-    </aside>
+
+        <div className="grid gap-2 sm:grid-cols-3">
+          {HERO_PROMPTS.map((prompt) => (
+            <Button
+              key={prompt}
+              type="button"
+              variant="outline"
+              disabled={disabled}
+              onClick={() => onPrompt(prompt)}
+              className="h-auto min-h-12 justify-start rounded-xl px-4 py-3 text-start text-xs leading-6 whitespace-normal sm:text-sm"
+            >
+              {prompt}
+            </Button>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1600,22 +1333,6 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
   const lastMessage = messages.at(-1);
   const showPendingAssistant =
     status === "submitted" && lastMessage?.role !== "assistant";
-  const totals = React.useMemo(() => sessionTotals(messages), [messages]);
-  const latestUsage = React.useMemo(() => {
-    for (let index = messages.length - 1; index >= 0; index -= 1) {
-      const usage = messageUsage(messages[index].metadata).usage;
-      if (usage) return usage;
-    }
-    return undefined;
-  }, [messages]);
-  const activeTool = React.useMemo(() => {
-    const latestAssistant = [...messages]
-      .reverse()
-      .find((message) => message.role === "assistant");
-    if (!latestAssistant) return undefined;
-    const latestPart = latestAssistant.parts.filter(isToolUIPart).at(-1);
-    return latestPart ? toolName(latestPart as LooseToolPart) : undefined;
-  }, [messages]);
 
   React.useEffect(() => {
     scheduleChatHistorySave(messages);
@@ -1736,9 +1453,8 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
 
   return (
     <div className="relative flex h-svh min-h-0 flex-1 flex-col overflow-hidden bg-background">
-      <div aria-hidden className="liara-grid pointer-events-none absolute inset-0 opacity-40" />
-      <header className="relative shrink-0 border-b border-border/55 bg-background/72 backdrop-blur-2xl">
-        <div className="flex h-16 w-full items-center gap-2.5 px-3 sm:px-5">
+      <header className="shrink-0 border-b border-border/55 bg-background">
+        <div className="flex h-14 w-full items-center gap-2.5 px-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5">
             <Image
               src="/liara-logo.svg"
@@ -1746,16 +1462,12 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
               width={101}
               height={45}
               priority
-              className="h-8 w-auto sm:h-9"
+              className="h-7 w-auto sm:h-8"
             />
             <span className="h-6 w-px bg-border" aria-hidden />
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h1 className="truncate text-xs font-bold tracking-tight sm:text-sm">کوپایلت</h1>
-                <Badge variant="outline" size="sm" className="hidden sm:inline-flex">V1</Badge>
-              </div>
-              <p className="text-muted-foreground hidden text-[0.625rem] sm:block">کنسول هوشمند زیرساخت</p>
-            </div>
+            <h1 className="truncate text-xs font-semibold tracking-tight sm:text-sm">
+              کوپایلت لیارا
+            </h1>
           </div>
           <span className="flex-1" />
           <Button
@@ -1785,15 +1497,6 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
       </header>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        <WorkspaceRail
-          status={status as ChatRunStatus}
-          pendingApproval={Boolean(pendingApproval)}
-          activeTool={activeTool}
-          model={busy ? undefined : latestUsage?.model}
-          hasConversation={messages.length > 0}
-          onPrompt={send}
-        />
-
         <main className="flex min-w-0 flex-1 flex-col">
           <section className="relative min-h-0 flex-1">
             <div
@@ -1811,7 +1514,7 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
                 {messages.length === 0 && !error ? (
                   <EmptyChat disabled={busy} onPrompt={send} />
                 ) : (
-                  <div className="flex flex-col gap-7">
+                  <div className="flex flex-col gap-5">
                     {messages.map((message, messageIndex) => {
                       if (message.role === "system") return null;
                       const text = messageText(message);
@@ -1866,19 +1569,6 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
                       />
                     ) : null}
 
-                    {totals.messages > 0 ? (
-                      <SessionCostFooter
-                        messages={totals.messages}
-                        totalToman={totals.totalToman}
-                        baselineToman={totals.baselineAvailable ? totals.baselineToman : undefined}
-                        totalPromptTokens={totals.totalPromptTokens}
-                        totalCompletionTokens={totals.totalCompletionTokens}
-                        cachedTokens={totals.cachedTokens}
-                        toolCalls={totals.toolCalls}
-                        breakdown={totals.breakdown}
-                        costComplete={totals.costComplete}
-                      />
-                    ) : null}
                     <div className="h-1" aria-hidden />
                   </div>
                 )}
@@ -1891,7 +1581,7 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
                 variant="outline"
                 size="sm"
                 onClick={() => scrollToLatest("smooth")}
-                className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full shadow-lg motion-safe:hover:-translate-x-1/2"
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-md shadow-sm"
               >
                 <ArrowDownIcon data-icon="inline-start" />
                 جدیدترین پاسخ
@@ -1899,8 +1589,7 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
             ) : null}
           </section>
 
-          <footer className="relative shrink-0 border-t border-border/55 bg-background/78 backdrop-blur-2xl">
-            <div className="pointer-events-none absolute inset-x-0 -top-10 h-10 bg-gradient-to-t from-background/70 to-transparent" />
+          <footer className="shrink-0 border-t border-border/55 bg-background">
             <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-6 lg:px-10">
               <ChatComposer
                 onSend={send}
@@ -1909,9 +1598,6 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
                 disabled={Boolean(pendingApproval) || pendingQuestion}
                 placeholder={pendingApproval || pendingQuestion ? "ابتدا تصمیم بالا را مشخص کنید…" : undefined}
               />
-              <p className="text-muted-foreground mt-1.5 text-center text-[0.625rem] leading-5">
-                هر تغییر زیرساختی پیش از اجرا به تأیید تو نیاز دارد.
-              </p>
             </div>
           </footer>
         </main>
@@ -1975,15 +1661,13 @@ function ChatHistoryLoading() {
       aria-busy="true"
       aria-label="در حال بارگذاری تاریخچهٔ گفتگو"
     >
-      <div aria-hidden className="liara-grid pointer-events-none absolute inset-0 opacity-40" />
-      <header className="relative shrink-0 border-b border-border/55 bg-background/72 backdrop-blur-2xl">
-        <div className="flex h-16 w-full items-center gap-3 px-3 sm:px-5">
-          <Image src="/liara-logo.svg" alt="لیارا" width={101} height={45} priority className="h-8 w-auto" />
+      <header className="shrink-0 border-b border-border/55 bg-background">
+        <div className="flex h-14 w-full items-center gap-3 px-3 sm:px-5">
+          <Image src="/liara-logo.svg" alt="لیارا" width={101} height={45} priority className="h-7 w-auto sm:h-8" />
           <span className="h-6 w-px bg-border" aria-hidden />
-          <div className="min-w-0">
-            <h1 className="truncate text-sm font-bold tracking-tight">کوپایلت</h1>
-            <p className="text-muted-foreground text-[0.625rem]">کنسول هوشمند زیرساخت</p>
-          </div>
+          <h1 className="truncate text-xs font-semibold tracking-tight sm:text-sm">
+            کوپایلت لیارا
+          </h1>
           <span className="flex-1" />
           <Badge variant="info">
             <LoaderCircleIcon data-icon="inline-start" className="animate-spin" />
@@ -1993,9 +1677,9 @@ function ChatHistoryLoading() {
         </div>
       </header>
       <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-8 sm:px-8">
-        <Skeleton className="h-24 w-4/5 self-end rounded-2xl" />
-        <Skeleton className="h-48 w-11/12 rounded-2xl" />
-        <Skeleton className="h-28 w-3/4 rounded-2xl" />
+        <Skeleton className="h-24 w-4/5 self-end rounded-lg" />
+        <Skeleton className="h-48 w-11/12 rounded-lg" />
+        <Skeleton className="h-28 w-3/4 rounded-lg" />
       </main>
     </div>
   );
