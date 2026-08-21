@@ -55,5 +55,5 @@ LIARA_AI_BASE_URL=          # مرحله ۲
 LIARA_AI_KEY=               # مرحله ۲
 TOOL_APPROVAL_SECRET=       # خودم می‌سازم (HMAC برای امضای تأییدها)
 TOKEN_COOKIE_SECRET=        # خودم می‌سازم (رمزنگاری کوکی توکن کاربر)
-ENABLE_SEMANTIC_RAG=false   # پیش‌فرض خاموش برای کاهش هزینه
+ENABLE_SEMANTIC_RAG=true    # پس از اجرای scripts/build-docs-index.mjs
 ```

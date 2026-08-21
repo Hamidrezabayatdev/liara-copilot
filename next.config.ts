@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
   output: standalone ? "standalone" : undefined,
   outputFileTracingIncludes: {
     "/api/chat": ["./data/docs/**/*.md", "./data/docs-vectors.json"],
-    "/api/health": ["./data/docs/**/*.md"],
+    "/api/health": ["./data/docs/**/*.md", "./data/docs-vectors.json"],
   },
   async headers() {
     return [

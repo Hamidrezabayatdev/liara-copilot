@@ -15,10 +15,11 @@ MODEL_ROUTER=deepseek/deepseek-v4-flash
 MODEL_ANSWER=openai/gpt-5.6-luna
 MODEL_REASON=google/gemini-3.7-flash
 MODEL_BASELINE=anthropic/claude-opus-5
+MODEL_EMBED=intfloat/multilingual-e5-large
 TOOL_APPROVAL_SECRET=<at least 32 random bytes>
 TOKEN_COOKIE_SECRET=<at least 32 random bytes>
 ALLOW_SHARED_LIARA_TOKEN=false
-ENABLE_SEMANTIC_RAG=false
+ENABLE_SEMANTIC_RAG=true
 TELEMETRY_ENABLED=true
 MAX_MODEL_CALLS_PER_REQUEST=18
 ```
@@ -31,6 +32,7 @@ Management API credentials برای production عمومی لازم نیستند�
 
 ```bash
 pnpm install --frozen-lockfile
+node scripts/build-docs-index.mjs
 pnpm check
 liara deploy --account hackathon --team-id "$LIARA_TEAM_ID" \
   --app liara-copilot-ir --platform next --path . \
@@ -38,8 +40,8 @@ liara deploy --account hackathon --team-id "$LIARA_TEAM_ID" \
 ```
 
 `liara.json` پورت، build region و health check را نگه می‌دارد. health check به
-`/api/health` می‌زند؛ این endpoint هیچ API یا مدل خارجی را صدا نمی‌زند و فقط
-آمادگی configuration و corpus محلی را بررسی می‌کند.
+`/api/health` می‌زند؛ این endpoint هیچ API یا مدل خارجی را صدا نمی‌زند و آمادگی
+configuration، corpus و سازگاری کامل semantic index محلی را بررسی می‌کند.
 
 ## 3. Deterministic standalone fallback
 
@@ -49,6 +51,7 @@ liara deploy --account hackathon --team-id "$LIARA_TEAM_ID" \
 یا `next build` اجرا نمی‌شود.
 
 ```bash
+node scripts/build-docs-index.mjs
 pnpm package:liara
 # آخرین خط، مسیر موقت artifact را چاپ می‌کند.
 
@@ -62,7 +65,8 @@ liara deploy --account hackathon --team-id "$LIARA_TEAM_ID" \
 Packager موارد زیر را enforce می‌کند:
 
 - dotenvهای کپی‌شده توسط Next پیش از ساخت context حذف می‌شوند.
-- `public`، static assets، corpus و traced runtime صریحاً بسته‌بندی می‌شوند.
+- `public`، static assets، corpus، semantic index و traced runtime صریحاً
+  بسته‌بندی می‌شوند؛ وقتی semantic فعال است index گمشده deployment را fail می‌کند.
 - symlinkهای نسبی pnpm بدون وابستگی به مسیر workstation حفظ می‌شوند.
 - package ناقص `@swc/helpers` در standalone Next 16 با نسخهٔ کامل lockfile جایگزین
   می‌شود.
@@ -78,6 +82,6 @@ liara logs --app liara-copilot-ir --team-id "$LIARA_TEAM_ID" \
   --since "15 minutes ago" --timestamps --last-lines
 ```
 
-قبل از promotion باید health پاسخ `status: ok` و هر دو check را `true` برگرداند.
+قبل از promotion باید health پاسخ `status: ok` و هر سه check را `true` برگرداند.
 در logها eventهای JSON با نام `http.request` شامل request ID، status، duration و
 AI usage دیده می‌شوند و نباید prompt، cookie، Authorization یا secret داشته باشند.

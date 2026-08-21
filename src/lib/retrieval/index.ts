@@ -52,6 +52,18 @@ const GENERIC_DOC_TERMS = new Set([
   'راهنما', 'مستندات', 'docs', 'داکیومنت',
 ]);
 
+/**
+ * Words that are too broad to prove a semantic neighbour belongs to the user's
+ * subject. Semantic retrieval may bridge vocabulary, but one accidental match
+ * on «روش» or «برنامه» must not turn an out-of-domain question into four
+ * official-looking yet irrelevant citations.
+ */
+const SEMANTIC_ANCHOR_NOISE = new Set([
+  ...GENERIC_DOC_TERMS,
+  'راه', 'روش', 'درست', 'تنظیم', 'تنظیمات', 'استفاده', 'کاربر', 'کاربران',
+  'برنامه', 'اپ', 'اپلیکیشن', 'مشکل', 'مورد', 'اطلاعات',
+]);
+
 export type RelevanceOptions = {
   /** Caller-requested ceiling; the global context cap still applies. */
   maxResults?: number;
@@ -123,6 +135,29 @@ export function hasLexicalEvidence(query: string, hits: readonly Hit[]): boolean
     }
     return false;
   });
+}
+
+/**
+ * Require one specific query concept to survive in the semantic neighbours.
+ * E5 cosine scores are intentionally compressed and cannot safely distinguish
+ * an unrelated nearest neighbour with a guessed absolute threshold. This cheap
+ * anchor preserves semantic reranking for in-domain ambiguity while rejecting
+ * out-of-domain results before RRF can make them look authoritative.
+ */
+export function hasSemanticAnchor(query: string, hits: readonly Hit[]): boolean {
+  if (hits.length === 0) return false;
+  const anchors = [...new Set(expandQuery(query).filter(keepTerm))]
+    .filter((term) => term.length >= 3 && !SEMANTIC_ANCHOR_NOISE.has(term));
+  if (anchors.length === 0) return false;
+
+  const matched = new Set<string>();
+  for (const hit of hits) {
+    const documentTerms = new Set(tokenizeFa(`${hit.title} ${hit.section} ${hit.text}`));
+    for (const anchor of anchors) {
+      if (termMatchesDocument(anchor, documentTerms)) matched.add(anchor);
+    }
+  }
+  return matched.size >= Math.min(2, anchors.length);
 }
 
 function selectKeywordEvidence(query: string, hits: readonly Hit[], limit: number): Hit[] {
@@ -258,6 +293,16 @@ function fuse(lists: Hit[][], limit: number): Hit[] {
     .map(([id, score]) => ({ ...byId.get(id)!, score }));
 }
 
+/** A source card represents a document, so keep its strongest-ranked chunk. */
+function dedupeDocuments(hits: readonly Hit[]): Hit[] {
+  const seen = new Set<string>();
+  return hits.filter((hit) => {
+    if (seen.has(hit.docId)) return false;
+    seen.add(hit.docId);
+    return true;
+  });
+}
+
 export async function searchDocs(
   query: string,
   opts?: { limit?: number; forceSemantic?: boolean; collector?: UsageCollector },
@@ -267,32 +312,44 @@ export async function searchDocs(
   // Over-fetch the keyword pass: fusion needs depth to reorder within.
   const keyword = dedupeNearDuplicateHits(await bm25Search(query, Math.max(limit, 8)));
   const confidence = keywordConfidence(keyword);
+  const keywordEvidence = selectKeywordEvidence(query, keyword, limit);
 
   const wantSemantic =
-    opts?.forceSemantic === true || (semanticEnabled() && confidence < ESCALATE_BELOW);
+    opts?.forceSemantic === true ||
+    (semanticEnabled() && (confidence < ESCALATE_BELOW || keywordEvidence.length === 0));
 
   if (!wantSemantic) {
     return {
-      hits: selectKeywordEvidence(query, keyword, limit),
+      hits: keywordEvidence,
       strategy: 'bm25',
       keywordConfidence: confidence,
     };
   }
 
-  const semantic = dedupeNearDuplicateHits(
+  const semantic = dedupeDocuments(dedupeNearDuplicateHits(
     await semanticSearch(query, Math.max(limit, 8), opts?.collector),
-  );
+  ));
   if (semantic.length === 0) {
     // Enabled but unavailable (no vector file, or the call failed). Report the
     // path that actually ran rather than the one that was requested.
     return {
-      hits: selectKeywordEvidence(query, keyword, limit),
+      hits: keywordEvidence,
       strategy: 'bm25',
       keywordConfidence: confidence,
     };
   }
 
-  const fused = dedupeNearDuplicateHits(fuse([keyword, semantic], Math.max(limit, 8)));
+  if (!hasSemanticAnchor(query, semantic)) {
+    return {
+      hits: keywordEvidence,
+      strategy: 'hybrid',
+      keywordConfidence: confidence,
+    };
+  }
+
+  const fused = dedupeDocuments(
+    dedupeNearDuplicateHits(fuse([keyword, semantic], Math.max(limit, 8))),
+  );
   return {
     hits: selectRelevantHits(fused, { maxResults: limit }),
     strategy: 'hybrid',

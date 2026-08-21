@@ -18,7 +18,7 @@
 - Markdown، code، table، لینک، منبع، مراحل ابزار و هزینه هنگام streaming با UI
   اختصاصی نمایش داده می‌شوند. اسکرول فقط وقتی کاربر پایین گفتگو است دنبال می‌شود.
 - نتیجهٔ retrieval با افت واقعی score بریده می‌شود؛ حداکثر چهار منبع مرتبط وارد
-  context می‌شوند و مسیر semantic فقط برای query ضعیف و با feature flag فعال است.
+  context می‌شوند و مسیر semantic فعال فقط برای queryهای کم‌اطمینان اجرا می‌شود.
 
 ## دموی دو دقیقه‌ای
 
@@ -54,7 +54,7 @@ pnpm dev
 ## بررسی کیفیت
 
 ```bash
-pnpm check       # lint + typecheck + 163 unit/integration tests + production build
+pnpm check       # lint + typecheck + unit/integration tests + production build
 pnpm test:e2e    # Chromium desktop/mobile + streaming + keyboard + WCAG A/AA
 ```
 
@@ -74,7 +74,7 @@ Persian streaming UI
   → deterministic-first intent router
   → DeepSeek router / Luna answer / Gemini reason
   → docs-only tools or an explicit Liara read/write capability set
-       ├─ bundled official docs: BM25 → optional semantic RRF
+       ├─ bundled official docs: BM25 → adaptive semantic RRF
        └─ allow-listed Liara management client
   → projected/redacted tool results + provenance + real Toman usage
   → browser-only conversation persistence
@@ -93,7 +93,7 @@ prompt، پاسخ، token حساب و cookie هرگز log نمی‌شوند.
 
 - rate limit، replay guard و circuit state برای deployment تک-instance فعلی
   process-local هستند؛ قبل از scale افقی باید به store مشترک منتقل شوند.
-- semantic retrieval عمداً پیش‌فرض خاموش است؛ برای corpus مرجع، BM25 سریع‌تر و
-  ارزان‌تر است و فقط در صورت فعال‌سازی vector index هزینهٔ embedding دارد.
+- semantic index یک artifact تولیدشده است و بعد از تغییر snapshot مستندات باید
+  پیش از deployment با `node scripts/build-docs-index.mjs` دوباره ساخته شود.
 - تاریخچه browser-local است و همگام‌سازی بین دستگاه‌ها ندارد؛ با تغییر حساب پاک
   می‌شود و فقط نتیجه‌های redacted را ذخیره می‌کند.

@@ -21,6 +21,7 @@
 
 # production
 /build
+/data/docs-vectors.json
 
 # misc
 .DS_Store

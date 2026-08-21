@@ -12,6 +12,11 @@ import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 
 const root = process.cwd();
+try {
+  process.loadEnvFile(join(root, ".env"));
+} catch {
+  /* CI and production packaging may provide the real environment directly. */
+}
 const source = resolve(root, ".next/standalone");
 const sourcePackage = JSON.parse(
   await readFile(join(source, "package.json"), "utf8"),
@@ -60,6 +65,34 @@ await rm(join(target, "data/docs"), { recursive: true, force: true });
 await cp(resolve(root, "data/docs"), join(target, "data/docs"), {
   recursive: true,
 });
+
+// Semantic retrieval is a generated deployment artifact. Copy it explicitly
+// instead of relying on Next's output tracer, and fail closed when an operator
+// enables the feature without building the matching index first.
+const vectorSource = resolve(
+  root,
+  process.env.DOCS_VECTORS_PATH ?? "data/docs-vectors.json",
+);
+const vectorTarget = join(target, "data/docs-vectors.json");
+await rm(vectorTarget, { force: true });
+try {
+  await cp(vectorSource, vectorTarget);
+} catch (error) {
+  if (
+    process.env.ENABLE_SEMANTIC_RAG === "true" &&
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    error.code === "ENOENT"
+  ) {
+    throw new Error(
+      `ENABLE_SEMANTIC_RAG=true but ${vectorSource} is missing. Run node scripts/build-docs-index.mjs first.`,
+    );
+  }
+  if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT")) {
+    throw error;
+  }
+}
 
 // Liara CLI deliberately ignores a directory named node_modules. The traced
 // standalone runtime is already complete, so keep it under a deployment-only

@@ -145,12 +145,13 @@ problems, and nothing in the product needs cross-device history.
 
 ### 2.7 Retrieval
 
-Hybrid, **BM25 by default**, semantic fully implemented but `ENABLE_SEMANTIC_RAG=false`.
-Semantic is escalated to only when keyword confidence < 0.35. Cost-driven, per
-owner decision: *"RAG should be disabled by default, but the code should be fully implemented."*
+Hybrid adaptive retrieval is enabled in production. **BM25 always runs first**;
+semantic retrieval is escalated only when keyword confidence < 0.35, using the
+prebuilt E5 index. This keeps clear documentation questions free while improving
+ambiguous queries.
 
-Docs freshness: bundled snapshot in-repo + a Liara cron every 8h writing to a
-mounted disk.
+Docs freshness: bundled snapshot in-repo. A refresh cron and mounted disk remain
+deferred until `/api/docs/refresh` is implemented.
 
 ### 2.8 Scope
 
@@ -516,9 +517,9 @@ Things that will be **stated, not faked**, in the demo and the README:
 - **Metric endpoints can be empty.** The series parser handles three
   plausible shapes from the spec, but it has not been validated against live data
   for every product/plan. The UI omits unavailable series rather than inventing data.
-- **Semantic retrieval ships off.** The code is complete and tested; enabling it
-  costs an embedding call per query. `ENABLE_SEMANTIC_RAG=true` +
-  `node scripts/build-docs-index.mjs` turns it on.
+- **Semantic index refresh is an operator step.** Production uses adaptive hybrid
+  retrieval, but a documentation snapshot change requires rerunning
+  `node scripts/build-docs-index.mjs` before packaging the next release.
 - **Replay and traffic guards are process-local in V0.** This is correct for a
   single hackathon instance. A multi-instance public deployment must move them
   to a shared durable store; encrypted account cookies also have no revocation
@@ -536,6 +537,7 @@ Things that will be **stated, not faked**, in the demo and the README:
 - [x] Every grounded answer carries provenance; docs claims carry a URL
 - [x] Per-message cost in Toman, and a session footer showing the saving
 - [x] Conversations survive a page reload
+- [x] Adaptive hybrid retrieval is enabled with a complete, health-checked index
 - [x] README explains the security model and reproducible deployment
 - [ ] Repo public (no Git remote/auth is configured in this workspace)
 - [ ] Demo video recorded (`docs/DEMO-SCRIPT.md` is ready)
@@ -550,7 +552,7 @@ pnpm exec tsc --noEmit                                # must stay clean
 
 node --import ./scripts/register-ts.mjs --test src/lib/**/*.test.ts
 node scripts/test-liara-client.mjs                    # live API, needs .env
-node scripts/build-docs-index.mjs [--limit N]         # costs money
+node scripts/build-docs-index.mjs [--limit N]       # build before packaging; costs money
 
 pnpm package:liara                                  # secret-free standalone artifact
 # See docs/DEPLOYMENT.md for the exact source and Docker deployment commands.

@@ -41,10 +41,14 @@ export function vectorStorePath(): string {
 }
 
 let storePromise: Promise<VectorStore | null> | null = null;
+let storeKey: string | null = null;
 let warned = false;
 
 function loadStore(): Promise<VectorStore | null> {
-  if (storePromise) return storePromise;
+  const key = `${vectorStorePath()}\0${MODELS.embed()}`;
+  if (storePromise && storeKey === key) return storePromise;
+  storeKey = key;
+  warned = false;
   storePromise = (async () => {
     try {
       const raw = await readFile(
@@ -52,13 +56,31 @@ function loadStore(): Promise<VectorStore | null> {
         'utf8',
       );
       const parsed = JSON.parse(raw) as VectorStore;
-      if (!Array.isArray(parsed?.chunks) || parsed.chunks.length === 0) return null;
       if (parsed.model !== MODELS.embed() && !warned) {
         warned = true;
         console.warn(
           `[retrieval] ${vectorStorePath()} was built with "${parsed.model}" but MODEL_EMBED is ` +
             `"${MODELS.embed()}". Vectors from different models are not comparable; rebuild the index.`,
         );
+        return null;
+      }
+      if (
+        !Number.isInteger(parsed.dim) ||
+        parsed.dim <= 0 ||
+        !Array.isArray(parsed.chunks) ||
+        parsed.chunks.length === 0 ||
+        parsed.chunks.some((chunk) =>
+          !chunk ||
+          typeof chunk.id !== 'string' ||
+          !Array.isArray(chunk.vector) ||
+          chunk.vector.length !== parsed.dim ||
+          !chunk.vector.every(Number.isFinite)
+        )
+      ) {
+        if (!warned) {
+          warned = true;
+          console.warn('[retrieval] semantic vector index is invalid; keyword results only.');
+        }
         return null;
       }
       return parsed;
@@ -98,15 +120,34 @@ export async function semanticSearch(
       value: `${QUERY_PREFIX}${query}`,
     });
     vector = res.embedding as number[];
-  } catch (err) {
-    console.warn('[retrieval] embedding the query failed; keyword results only.', err);
+  } catch {
+    console.warn('[retrieval] embedding the query failed; keyword results only.');
     return [];
   }
 
-  const scored = store.chunks
-    .map((c) => ({ id: c.id, score: cosineSimilarity(vector, c.vector) }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+  if (
+    !Array.isArray(vector) ||
+    vector.length !== store.dim ||
+    !vector.every(Number.isFinite)
+  ) {
+    console.warn('[retrieval] query embedding is incompatible with the vector index; keyword results only.');
+    return [];
+  }
+
+  let scored: Array<{ id: string; score: number }>;
+  try {
+    scored = store.chunks
+      .map((c) => ({ id: c.id, score: cosineSimilarity(vector, c.vector) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+    if (scored.some(({ score }) => !Number.isFinite(score))) {
+      console.warn('[retrieval] semantic scoring was invalid; keyword results only.');
+      return [];
+    }
+  } catch {
+    console.warn('[retrieval] semantic scoring failed; keyword results only.');
+    return [];
+  }
 
   const byId = new Map((await loadCorpus()).map((c) => [c.id, c]));
   return scored.flatMap(({ id, score }) => {

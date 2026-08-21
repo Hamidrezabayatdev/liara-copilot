@@ -110,13 +110,15 @@ export type UsageMeta = { model: string; tier: 'router'|'answer'|'reason'; input
 
 | # | scope | owner | depends on |
 |---|---|---|---|
-| A | retrieval: corpus bundle, Persian normalizer, MiniSearch index, `search_docs`/`read_doc`, semantic module flag-gated off | delegated | none |
+| A | retrieval: corpus bundle, Persian normalizer, MiniSearch index, `search_docs`/`read_doc`, adaptive semantic fallback | delegated | none |
 | B | UI: RTL + Vazirmatn shell, shadcn init, all cards, checklist, cost badges | delegated | contracts only |
 | C | Liara client + allow-list + read/write tools | delegated (security) | contracts only |
 | D | agent core: provider tiers, level router, approval, capability middleware, cost meter, 3 Skills | **me** | A/C signatures |
 | E | seed script, `liara.json`, deploy, demo script | me | 1–4 of checklist |
 
-Retrieval default: **BM25 only**. Semantic fully implemented, `ENABLE_SEMANTIC_RAG=false`, escalated only when BM25 confidence is low. Cost-driven, per owner decision.
+Retrieval is adaptive hybrid in production: BM25 always runs first and semantic
+search is enabled with a prebuilt E5 index only when BM25 confidence is low.
+The code still defaults safely to BM25 when the feature flag or index is absent.
 
 ## 4. Level routing
 - **L1** trivial → `openai/gpt-5.6-luna`, docs tools only, `stepCountIs(2)`
