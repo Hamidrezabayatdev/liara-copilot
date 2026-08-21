@@ -84,6 +84,30 @@ databases: small-g2 486.11 │ medium-g2 833.33 │ ir-small 972.22 │ standard
 
 tool calling با prompt فارسی در اولین تست کار کرد: `finish_reason: "tool_calls"`.
 
+### قیمت‌گذاری مدل‌ها — از `GET /models` بخوانید، hardcode نکنید
+`GET {LIARA_AI_BASE_URL}/models` برای هر مدل یک `pricing` برمی‌گرداند
+(`prompt` و `completion` = **دلار به‌ازای هر توکن**، رشته‌ای). ۱۸۲ مدل.
+همچنین `supported_parameters` (شامل `tools`)، `context_length`، و `endpoints[].route`.
+
+| مدل | نقش | ورودی $/1M | خروجی $/1M | tools |
+|---|---|---|---|---|
+| `google/gemini-3.7-flash` | router + answer | 0.375 | 1.875 | ✅ |
+| `anthropic/claude-sonnet-5` | reasoning | 2.000 | 10.000 | ✅ |
+| `anthropic/claude-opus-5` | baseline مقایسه | 5.000 | 25.000 | ✅ |
+| `intfloat/multilingual-e5-large` | embedding | 0.000 | 0.000 | — |
+
+**opus-5 دقیقاً ۱۳٫۳ برابر flash است** (هم ورودی هم خروجی) — این عدد پشتِ
+ادعای «چند درصد صرفه‌جویی» در فوتر است و محاسبه‌شده است، نه تخمینی.
+
+### نرخ تبدیل USD→تومان را استخراج کنید، ثابت ننویسید
+از هر پاسخ واقعی: `fx = total_cost_toman / cost`. روی نمونهٔ مشاهده‌شده
+(`41.802966562 / 0.000160875`) ≈ **۲۵۹٬۸۴۷ تومان بر دلار**. این نرخ شناور است
+(نمونهٔ داکیومنتِ آبان ۱۴۰۴ برابر ۱۱۹٬۸۵۷٫۵ بود) پس در کد باید از اولین پاسخ
+واقعیِ هر session خودش را کالیبره کند.
+
+### محدودیت نرخ
+پلن میرزاخانی: **۱۰ request/s**. پلن تورینگ: ۱۰۰ request/s.
+
 ## 4. Docs corpus
 
 - ۱۱۲۵ فایل `.md`، ۴٫۲۴ MB در `/tmp/liara-corpus/` — اسم فایل = مسیر URL با `/`→`__`
