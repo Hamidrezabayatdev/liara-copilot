@@ -1712,8 +1712,8 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
             ) : null}
           </section>
 
-          <footer className="shrink-0 border-t border-border/55 bg-background">
-            <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-6 lg:px-10">
+          <footer className="shrink-0 px-3 pt-2 pb-3 sm:px-6 sm:pb-4">
+            <div className="mx-auto w-full max-w-3xl">
               <ChatComposer
                 onSend={send}
                 streaming={busy}

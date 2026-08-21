@@ -121,7 +121,7 @@ function ChatComposer({
 
       <div
         className={cn(
-          "bg-card focus-within:border-ring focus-within:ring-ring/20 relative overflow-hidden rounded-lg border border-border shadow-sm transition-[border-color,box-shadow] duration-200 focus-within:ring-2",
+          "bg-card focus-within:border-ring focus-within:ring-ring/20 relative overflow-hidden rounded-lg border border-border shadow-[var(--panel-shadow)] transition-[border-color,box-shadow] duration-200 focus-within:ring-2",
           disabled && "opacity-60",
         )}
       >
