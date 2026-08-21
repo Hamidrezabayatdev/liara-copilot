@@ -1,0 +1,14 @@
+{
+  "port": 3000,
+  "node": {
+    "mirror": true,
+    "version": "22"
+  },
+  "healthCheck": {
+    "command": "CMD curl --fail http://localhost:3000/health || exit 1",
+    "interval": 30000,
+    "timeout": 10000,
+    "retries": 2,
+    "startPeriod": 3000
+  }
+}

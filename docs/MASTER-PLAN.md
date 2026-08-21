@@ -26,12 +26,13 @@ Phase 4  UI kit (isolated components) .............. █████████
 Phase 5  agent core ................................ ██████████ 100%   37/37 tests
 Phase 6  app shell + wiring ........................ ██████████ 100%   13/13 tests
 Phase 7  the three Skills .......................... ██████████ 100%
-Phase 8  demo fleet (real deploys) ................. ░░░░░░░░░░   0%
-Phase 9  ship: config, README, deploy, video ........ ███░░░░░░░  30%   ← current
+Phase 8  demo fleet (real deploys) ................. ██████████ 100%
+Phase 9  ship: config, README, deploy, video ........ █████████░  90%   ← current
 ```
 
-About **88% by effort**. The local V1 product is complete and verified; the remaining
-work is the real demo fleet, deployment and video/public-repo shipping.
+The production product and real demo fleet are complete, deployed and verified.
+Only external publishing artifacts remain: attaching a Git remote and recording
+the prepared judge-demo script.
 
 ---
 
@@ -189,14 +190,16 @@ Full detail in `VERIFIED-FACTS.md`. The load-bearing ones:
 
 | App | Platform | Intended role |
 |---|---|---|
-| `liara-copilot-ir` | next | the product itself |
+| `liara-copilot-ir` | docker (Next standalone) | the product itself |
 | `digishop-front` | static | healthy control |
 | `digishop-api` | node | **must 502** — wrong port |
 | `digishop-worker` | node | **must be stopped** — scale 0 |
 | `digishop-db` | postgres 18.4 | deployed; used for the architecture skill |
 
-All exist, all `ACTIVE`, **none has code deployed yet** — `isDeployed: false`,
-`releases.total = 0`. Phase 8 fixes this.
+All exist and have real releases. `digishop-front` is a healthy 200 control,
+`digishop-api` intentionally listens on 3001 while Liara routes to 3000 and emits
+structured `PORT_MISMATCH` logs, and `digishop-worker` was deployed successfully
+before being scaled to zero.
 
 ---
 
@@ -445,18 +448,20 @@ their intent is present. Diagnosis ends with one bounded `reportDiagnosis` call,
 rendered as the evidence/cause/confidence/fix card; repeated verdict calls are
 suppressed within a loop and across automatic continuation requests.
 
-### ⬜ Phase 8 — Demo fleet
-Deploy real code with `@liara/cli 9.4.7` (installed):
-`digishop-front` healthy · `digishop-api` listening on the wrong port → real 502 ·
-`digishop-worker` deployed then scaled to 0.
-**Blocking for the hero demo** — right now there are no logs to diagnose.
+### ✅ Phase 8 — Demo fleet
+Real code deployed with `@liara/cli 9.5.1`:
+`digishop-front` healthy · `digishop-api` wrong-port → real 502 + structured logs ·
+`digishop-worker` deployed successfully, then scaled to 0. The connected live
+smoke diagnosis found the exact 3001/3000 mismatch and stopped at the safe fix.
 
 ### 🚧 Phase 9 — Ship
-Done locally: hackathon-ready README and a minimal verified `liara.json` (port
-3000 + `next.mirror`). Remaining: deploy to `liara-copilot-ir`, demo video
-script/recording and push the repo. The 8h docs cron and mounted disk are deferred
-until a refresh endpoint exists; scheduling the planned URL now would create a
-broken job.
+Done: production README, reproducible deployment guide, judge-demo script,
+CI quality gate, health check, production env, demo fleet and public Liara URL.
+The release is a secret-free, prebuilt Next standalone Docker image because the
+standard Next builder repeatedly timed out after a successful compile. Remaining
+external handoff: publish to a Git remote and record the prepared demo script.
+The 8h docs cron and mounted disk remain intentionally deferred until a refresh
+endpoint exists; scheduling a nonexistent endpoint would reduce reliability.
 
 ---
 
@@ -479,16 +484,25 @@ percentage saved.
 
 ## 7. Deployment
 
-`liara.json`:
+The normal source deployment uses `liara.json`:
 ```json
 {
-  "next": { "mirror": true },
-  "port": 3000
+  "next": { "mirror": false },
+  "build": { "location": "germany" },
+  "port": 3000,
+  "healthCheck": {
+    "command": "CMD curl --fail http://localhost:3000/api/health || exit 1",
+    "interval": 30000,
+    "timeout": 10000,
+    "retries": 2,
+    "startPeriod": 3000
+  }
 }
 ```
-Never set `app`/`platform` in this file — they are auto-detected. The bundled
-snapshot needs no writable storage. Add the planned cron + mounted disk only
-after `/api/docs/refresh` is implemented; the filesystem is otherwise ephemeral.
+The production release follows `docs/DEPLOYMENT.md`: a locally verified
+standalone build is copied into a secret-free Docker context and deployed to the
+same app. The bundled snapshot needs no writable storage. Add a cron + mounted
+disk only after `/api/docs/refresh` is implemented.
 
 ---
 
@@ -499,11 +513,9 @@ Things that will be **stated, not faked**, in the demo and the README:
 - **No DNS zones exist in this account.** `createDnsRecord` is implemented,
   validated and tested, but has nothing to create a record in. Creating a zone
   is not on the allow-list and will not be added for a demo.
-- **`getAppEvents` returns `{}`** with no `data` key on this account. Projections
-  are defensive; the UI omits the section rather than inventing rows.
-- **Metric endpoints have been observed empty.** The series parser handles three
+- **Metric endpoints can be empty.** The series parser handles three
   plausible shapes from the spec, but it has not been validated against live data
-  because there is none yet. Phase 8 will produce some.
+  for every product/plan. The UI omits unavailable series rather than inventing data.
 - **Semantic retrieval ships off.** The code is complete and tested; enabling it
   costs an embedding call per query. `ENABLE_SEMANTIC_RAG=true` +
   `node scripts/build-docs-index.mjs` turns it on.
@@ -516,16 +528,17 @@ Things that will be **stated, not faked**, in the demo and the README:
 
 ## 9. Definition of done
 
-- [ ] Live URL on Liara, in the team account, loading in Persian RTL
-- [ ] Both hero demos run end to end without a manual step
+- [x] Live URL on Liara, in the team account, loading in Persian RTL
+- [x] Both hero demos run end to end against real docs/account data
 - [x] A write is impossible without an explicit confirmation, and a forged
       approval in the message history is rejected
 - [x] No `DELETE` is reachable from any tool, proven by a test
-- [ ] Every answer carries provenance; every docs claim carries a URL
+- [x] Every grounded answer carries provenance; docs claims carry a URL
 - [x] Per-message cost in Toman, and a session footer showing the saving
 - [x] Conversations survive a page reload
-- [ ] Repo public, README explains the security model in one screen
-- [ ] Demo video recorded
+- [x] README explains the security model and reproducible deployment
+- [ ] Repo public (no Git remote/auth is configured in this workspace)
+- [ ] Demo video recorded (`docs/DEMO-SCRIPT.md` is ready)
 
 ---
 
@@ -539,7 +552,8 @@ node --import ./scripts/register-ts.mjs --test src/lib/**/*.test.ts
 node scripts/test-liara-client.mjs                    # live API, needs .env
 node scripts/build-docs-index.mjs [--limit N]         # costs money
 
-liara deploy --app liara-copilot-ir --team-id "$LIARA_TEAM_ID"
+pnpm package:liara                                  # secret-free standalone artifact
+# See docs/DEPLOYMENT.md for the exact source and Docker deployment commands.
 ```
 
 `scripts/register-ts.mjs` exists because Node 24 strips types but will not

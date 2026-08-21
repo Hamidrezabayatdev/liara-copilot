@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>دیجی‌شاپ · محیط نمایشی لیارا</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+      * { box-sizing: border-box; }
+      body { min-height: 100vh; margin: 0; display: grid; place-items: center; background: #f5f7f7; color: #17201e; }
+      main { width: min(40rem, calc(100% - 2rem)); padding: 2.5rem; border: 1px solid #d9e0de; border-radius: 1rem; background: #fff; box-shadow: 0 1.5rem 4rem rgb(12 32 27 / 10%); }
+      .mark { display: inline-flex; align-items: center; gap: .6rem; color: #087f5b; font-weight: 750; }
+      .dot { width: .7rem; height: .7rem; border-radius: 999px; background: #12b886; box-shadow: 0 0 0 .35rem rgb(18 184 134 / 12%); }
+      h1 { margin: 1.75rem 0 .75rem; font-size: clamp(1.65rem, 4vw, 2.4rem); }
+      p { margin: 0; line-height: 2; color: #53615e; }
+      code { direction: ltr; unicode-bidi: isolate; font-size: .85em; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #101513; color: #edf3f1; }
+        main { background: #151c19; border-color: #2a3531; }
+        p { color: #aab6b2; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="mark"><span class="dot" aria-hidden="true"></span>سرویس سالم</span>
+      <h1>فروشگاه نمایشی دیجی‌شاپ</h1>
+      <p>این صفحه کنترل سالم برای دموی Liara Copilot است. سرویس <code>digishop-api</code> عمداً خطای 502 تولید می‌کند تا مسیر تشخیص و رفع مشکل با دادهٔ واقعی نمایش داده شود.</p>
+    </main>
+  </body>
+</html>

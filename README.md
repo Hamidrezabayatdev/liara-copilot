@@ -1,145 +1,99 @@
 # Liara Copilot
 
-یک دستیار فارسی و RTL برای Liara که بین پاسخ ساده، بررسی زندهٔ حساب و
-عیب‌یابی چندمرحله‌ای کم‌هزینه‌ترین مسیر مناسب را انتخاب می‌کند. این پروژه برای
-هکاتون ساخته شده و اکنون V1 محلی آن قابل اجرا و build است؛ هنوز روی Liara عمومی نشده.
+دستیار فارسی و RTL لیارا برای پاسخ مستند، مشاهدهٔ زندهٔ حساب و عیب‌یابی
+چندمرحله‌ای—با مسیر مدل متناسب با سختی سؤال، ابزارهای محدود و عملیات قابل تأیید.
 
-## تجربهٔ V1
+**نسخهٔ زنده:** [liara-copilot-ir.liara.run](https://liara-copilot-ir.liara.run)
 
-- رابط کامل RTL با زبان بصری فعلی Liara، motion کنترل‌شده و کارت‌های تخصصی برای
-  app، database، release، log، metric، DNS، bucket، plan و اسناد رسمی.
-- Markdown کامل و امن با نمایش زندهٔ heading، list، table و code؛ خروجی هنگام
-  streaming به‌صورت تدریجی ظاهر می‌شود.
-- اسکرول مکالمه فقط وقتی کاربر پایین صفحه است پاسخ را دنبال می‌کند؛ هنگام مطالعهٔ
-  پیام‌های قبلی جای کاربر حفظ و دکمهٔ «جدیدترین پاسخ» نمایش داده می‌شود.
-- بازیابی اسناد تعداد ثابتی را تحمیل نمی‌کند: خوشهٔ مرتبط را تا اولین افت معنادار
-  نگه می‌دارد، دنبالهٔ ضعیف را حذف می‌کند و حداکثر چهار منبع می‌فرستد.
-- context مدل و schema ابزارها متناسب با turn کوچک می‌شوند و یک جست‌وجوی موفق
-  مستندات در همان turn دوباره اجرا نمی‌شود.
-- عیب‌یابی Level 3 با یک کارت ساختاریافتهٔ cause/evidence/confidence/fix تمام
-  می‌شود؛ دکمهٔ اصلاح فقط یک turn امن تازه می‌سازد و مسیر تأیید را دور نمی‌زند.
+## چرا این پروژه متفاوت است؟
+
+- بدون اتصال حساب هم به پرسش‌های عمومی با جست‌وجوی ۱٬۱۲۵ صفحهٔ مستندات رسمی
+  و citation پاسخ می‌دهد.
+- برای دادهٔ واقعی، توکن کاربر فقط در cookie رمزنگاری‌شدهٔ `HttpOnly` با عمر
+  هشت ساعت نگه‌داری می‌شود؛ هیچ credential در مرورگر، مدل یا log ذخیره نمی‌شود.
+- بین سه مسیر هزینه/کیفیت انتخاب می‌کند: DeepSeek V4 Flash برای routing،
+  GPT-5.6 Luna برای پاسخ، و Gemini 3.7 Flash فقط برای reasoning پیچیده.
+- ابزارها بر اساس intent محدود می‌شوند. هیچ API عمومی یا `DELETE` وجود ندارد و
+  هر write برگشت‌پذیر به diff، امضای HMAC و تأیید صریح همان کاربر نیاز دارد.
+- Markdown، code، table، لینک، منبع، مراحل ابزار و هزینه هنگام streaming با UI
+  اختصاصی نمایش داده می‌شوند. اسکرول فقط وقتی کاربر پایین گفتگو است دنبال می‌شود.
+- نتیجهٔ retrieval با افت واقعی score بریده می‌شود؛ حداکثر چهار منبع مرتبط وارد
+  context می‌شوند و مسیر semantic فقط برای query ضعیف و با feature flag فعال است.
+
+## دموی دو دقیقه‌ای
+
+| سناریو | پیام پیشنهادی | چیزی که باید ببینید |
+|---|---|---|
+| مستندات عمومی | `برای deploy امن Next.js روی لیارا چه تنظیماتی لازم است؟` | جست‌وجوی مستندات، Markdown و لینک رسمی؛ بدون نیاز به حساب |
+| مشاهدهٔ حساب | `چه برنامه‌هایی در حساب من فعال‌اند؟` | پس از «اتصال حساب»، کارت‌های واقعی برنامه‌ها؛ بدون write |
+| عیب‌یابی | `چرا digishop-api خطای ۵۰۲ می‌دهد؟` | Gemini وضعیت، log و env را بررسی و mismatch پورت ۳۰۰۱/۳۰۰۰ را پیدا می‌کند |
+| عملیات امن | `APP_PORT را روی 3000 بگذار` | Before/After و پنجرهٔ تأیید؛ تا تأیید نکنید هیچ تغییری رخ نمی‌دهد |
+| ماندگاری | یک گفتگو بسازید و صفحه را refresh کنید | turnهای کامل و جمع هزینه از IndexedDB برمی‌گردند |
+
+ناوگان واقعی دمو نیز روی Liara فعال است:
+
+- [digishop-front](https://digishop-front.liara.run) — کنترل سالم (`200`)
+- [digishop-api](https://digishop-api.liara.run) — خطای عمدی mismatch پورت (`502`)
+- `digishop-worker` — نسخهٔ موفق deploy شده و عمداً روی scale صفر متوقف است
 
 ## اجرای محلی
 
-نیازمندی‌ها: Node.js 20+ و pnpm 9.
+نیازمندی‌ها: Node.js 22+ و pnpm 9.
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 cp .env.example .env
-```
-
-حداقل این مقادیر را در `.env` تنظیم کنید (این فایل در git نادیده گرفته می‌شود):
-
-```dotenv
-LIARA_API_TOKEN=             # اختیاری؛ fallback فقط برای توسعهٔ محلی
-LIARA_TEAM_ID=               # همراه fallback برای حساب تیمی
-ALLOW_SHARED_LIARA_TOKEN=false # برای fallback خصوصی/محلی به true تغییر دهید
-LIARA_AI_BASE_URL=https://ai.liara.ir/api/<workspace-id>/v1
-LIARA_AI_KEY=
-TOOL_APPROVAL_SECRET=        # openssl rand -base64 32
-TOKEN_COOKIE_SECRET=         # openssl rand -base64 32
-ENABLE_SEMANTIC_RAG=false
-```
-
-کلید AI فقط در سرور استفاده می‌شود. برای منابع حساب، یا fallback محلی بالا را
-تنظیم کنید یا از دکمهٔ «اتصال حساب» داخل برنامه استفاده کنید؛ توکن کاربر در یک
-cookie رمزنگاری‌شدهٔ `httpOnly` با عمر ۸ ساعت نگه‌داری می‌شود. secretها را commit
-نکنید.
-سپس:
-
-```bash
 pnpm dev
 ```
 
-برنامه در [http://localhost:3000](http://localhost:3000) باز می‌شود. هر پیام
-واقعی به Liara AI هزینه دارد و هزینهٔ برگشتی سرویس در رابط به Toman نمایش داده
-می‌شود.
-
-## چه چیزی را می‌توان تست کرد؟
-
-این سناریوها را به ترتیب امتحان کنید:
-
-| سناریو | پیام نمونه | انتظار |
-|---|---|---|
-| پاسخ مستنداتی | `لیارا چیست؟` | Level 1، مدل GPT-5.6 Luna، جست‌وجوی مستندات و citation |
-| مشاهدهٔ حساب | `چه اپ‌هایی در حساب من فعال هستند؟` | Level 2، کارت اپ‌ها بدون تغییر حساب |
-| ماندگاری | یک سؤال بپرسید و صفحه را refresh کنید | گفتگو و جمع هزینه از IndexedDB بازیابی می‌شود |
-| دادهٔ حساس | `متغیرهای محیطی digishop-api را نشان بده` | مقدار secretها پیش از رسیدن به مدل redacted می‌شود |
-| عیب‌یابی | `چرا digishop-api پاسخ ۵۰۲ می‌دهد؟` | Level 3، بررسی مرحله‌ای status/release/logs و توقف پس از یافتن علت |
-| تأیید عملیات | یک تغییر env یا restart درخواست کنید | Before/After و دیالوگ تأیید؛ رد کردن نباید هیچ API write بزند |
-
-سناریوی کامل 502 به کد دمو روی `digishop-api` نیاز دارد؛ اپ‌های ناوگان ساخته
-شده‌اند اما هنوز کد معیوب/سالم آن‌ها deploy نشده است. بنابراین فعلاً پاسخ این
-سناریو به داده‌ای که واقعاً در حساب وجود دارد محدود می‌ماند و چیزی جعل نمی‌شود.
+مقادیر `LIARA_AI_BASE_URL`، `LIARA_AI_KEY`، `TOOL_APPROVAL_SECRET` و
+`TOKEN_COOKIE_SECRET` را در `.env` تنظیم کنید. `LIARA_API_TOKEN` و
+`LIARA_TEAM_ID` فقط برای smoke test یا دموی خصوصی لازم‌اند؛ production عمومی
+به‌صورت پیش‌فرض credential مشترک را نادیده می‌گیرد. secretها را commit نکنید.
 
 ## بررسی کیفیت
 
 ```bash
-pnpm lint
-pnpm exec tsc --noEmit
-pnpm test
-pnpm build
+pnpm check       # lint + typecheck + 163 unit/integration tests + production build
+pnpm test:e2e    # Chromium desktop/mobile + streaming + keyboard + WCAG A/AA
 ```
 
-Smoke test زندهٔ client (به API واقعی وصل می‌شود):
+Smoke test فقط‌خواندنی client واقعی:
 
 ```bash
 node scripts/test-liara-client.mjs
 ```
 
-این تست read-only است، اما به `LIARA_API_TOKEN` و در حساب تیمی به
-`LIARA_TEAM_ID` نیاز دارد.
+CI همین مجموعه را روی هر push و pull request اجرا و trace/screenshot شکست‌ها را
+نگه‌داری می‌کند.
 
-## معماری در یک نگاه
+## معماری کوتاه
 
 ```text
-Persian chat UI
-  → deterministic escalation router (Level 1 / 2 / 3)
-  → Liara AI: DeepSeek V4 Flash router → GPT-5.6 Luna answers → Gemini 3.7 Flash reasoning
-  → 21 narrow tools (18 Liara operations + docs + diagnosis presenter + askUser)
-       ├─ bundled Liara docs: BM25, semantic retrieval optional
+Persian streaming UI
+  → deterministic-first intent router
+  → DeepSeek router / Luna answer / Gemini reason
+  → docs-only tools or an explicit Liara read/write capability set
+       ├─ bundled official docs: BM25 → optional semantic RRF
        └─ allow-listed Liara management client
-  → streamed tool cards + real Toman usage metadata
-  → completed chat turns in browser IndexedDB
+  → projected/redacted tool results + provenance + real Toman usage
+  → browser-only conversation persistence
 ```
 
-جزئیات تصمیم‌ها در [MASTER-PLAN](docs/MASTER-PLAN.md)، واقعیت‌های اندازه‌گیری‌شده
-در [VERIFIED-FACTS](docs/VERIFIED-FACTS.md)، و spec محصول در
-[product spec](docs/liara-agentic-assistant-product-spec-v2-en.md) است.
+Production شامل `/api/health` بدون تماس شبکه، deadline سراسری ۱۱۰ ثانیه، سقف
+فراخوانی مدل، rate/concurrency guard، request ID، CSP/HSTS و telemetry ساختاریافته
+است. telemetry فقط metadata عملیاتی، مدل، token، latency و هزینه را ثبت می‌کند؛
+prompt، پاسخ، token حساب و cookie هرگز log نمی‌شوند.
 
-## مرزهای امنیتی
+راهنمای تکرار deployment در [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)، تصمیم‌ها در
+[docs/MASTER-PLAN.md](docs/MASTER-PLAN.md)، و واقعیت‌های API در
+[docs/VERIFIED-FACTS.md](docs/VERIFIED-FACTS.md) قرار دارند.
 
-- مدل فقط ابزارهای level جاری را می‌بیند؛ ابزار عمومی `liara_api_call` وجود ندارد.
-- client فقط endpointهای صریح allow-list را می‌پذیرد و هر `DELETE` را رد می‌کند.
-- تنها شش write برگشت‌پذیر وجود دارد و هرکدام تأیید صریح کاربر می‌خواهند.
-- تأییدها با HMAC به حساب، نام ابزار، call id و input دقیق متصل‌اند؛ هر write در
-  process فعلی فقط یک بار مصرف می‌شود و بدون secret معتبر fail closed است.
-- مقادیر env پیش از ورود به model context redacted می‌شوند.
-- production به‌صورت پیش‌فرض `LIARA_API_TOKEN` مشترک را نادیده می‌گیرد و اتصال
-  per-user می‌خواهد. درخواست‌ها same-origin، rate-limited و برای هر حساب تک-stream
-  هستند؛ headerهای ضد clickjacking نیز فعال‌اند.
+## مرزهای صادقانه
 
-## استقرار روی Liara
-
-فایل [`liara.json`](liara.json) فقط تنظیمات معتبر فعلی را نگه می‌دارد. ابتدا یک
-اپ NextJS بسازید و متغیرهای محیطی بالا را در Console تنظیم کنید، سپس بعد از
-بازبینی نهایی:
-
-```bash
-liara deploy --app=liara-copilot-ir --platform=next --team-id="$LIARA_TEAM_ID"
-```
-
-این repository هیچ deploy خودکاری انجام نمی‌دهد. cron و disk مربوط به refresh
-مستندات زمانی اضافه می‌شوند که endpoint مربوطه پیاده‌سازی شده باشد؛ snapshot
-فعلی مستندات همراه کد است.
-
-## محدودیت‌های صادقانهٔ V1 محلی
-
-- demo fleet هنوز code deployment ندارد؛ hero demo کامل 502 آماده نیست.
-- semantic retrieval پیاده‌سازی شده ولی برای کنترل هزینه پیش‌فرض خاموش است.
-- حساب فعلی DNS zone ندارد و metric endpointها در مشاهدهٔ اخیر خالی بوده‌اند.
-- replay/rate limit در v0 حافظه‌ای است؛ استقرار چند-instance باید آن را به یک
-  store مشترک منتقل کند. cookie نیز پیش از پایان ۸ ساعت revocation سروری ندارد.
-- IndexedDB رمزنگاری‌شده نیست؛ فقط خروجی‌های redacted ذخیره می‌شوند و با تغییر
-  حساب در همهٔ tabها پاک می‌شود، اما روی مرورگر مشترک تاریخچه را دستی هم پاک کنید.
-- live URL، public repository و demo video هنوز مرحلهٔ shipping هستند.
+- rate limit، replay guard و circuit state برای deployment تک-instance فعلی
+  process-local هستند؛ قبل از scale افقی باید به store مشترک منتقل شوند.
+- semantic retrieval عمداً پیش‌فرض خاموش است؛ برای corpus مرجع، BM25 سریع‌تر و
+  ارزان‌تر است و فقط در صورت فعال‌سازی vector index هزینهٔ embedding دارد.
+- تاریخچه browser-local است و همگام‌سازی بین دستگاه‌ها ندارد؛ با تغییر حساب پاک
+  می‌شود و فقط نتیجه‌های redacted را ذخیره می‌کند.
