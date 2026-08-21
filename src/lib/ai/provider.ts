@@ -48,10 +48,14 @@ export type CapturedCall = {
  * created per HTTP request to /api/chat and threaded into the provider, so
  * concurrent users never mix usage. Never make this module-global.
  */
-export type UsageCollector = { calls: CapturedCall[] };
+export type UsageCollector = {
+  calls: CapturedCall[];
+  /** In-flight observers for streamed usage. Await before presenting totals. */
+  pending?: Promise<void>[];
+};
 
 export function createUsageCollector(): UsageCollector {
-  return { calls: [] };
+  return { calls: [], pending: [] };
 }
 
 function modelFromBody(body: unknown): string {
@@ -134,9 +138,10 @@ function instrumentedFetch(collector: UsageCollector): typeof globalThis.fetch {
       // Streaming usage arrives in the final chunk (the provider sets
       // stream_options.include_usage), so this settles after the caller is done.
       let seen: LiaraRawUsage | null = null;
-      void scanSseForUsage(toScanner, u => {
+      const pending = scanSseForUsage(toScanner, u => {
         seen = u;
       }).then(() => record(seen));
+      (collector.pending ??= []).push(pending);
       return new Response(toCaller, {
         status: res.status,
         statusText: res.statusText,

@@ -117,7 +117,18 @@ export interface MetricSeries {
   current?: number;
 }
 
-export type DnsRecordType = "A" | "AAAA" | "CNAME" | "TXT" | "MX" | "NS" | "SRV";
+export type DnsRecordType =
+  | "A"
+  | "AAAA"
+  | "CNAME"
+  | "ALIAS"
+  | "TXT"
+  | "SPF"
+  | "MX"
+  | "NS"
+  | "SRV"
+  | "PTR"
+  | "CAA";
 
 export interface DnsRecord {
   id: string;

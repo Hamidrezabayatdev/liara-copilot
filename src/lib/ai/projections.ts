@@ -439,7 +439,19 @@ export function scalarDiff(label: string, before: unknown, after: unknown): Diff
  * DNS
  * ================================================================== */
 
-const UI_DNS_TYPES = new Set<UiDnsRecordType>(['A', 'AAAA', 'CNAME', 'TXT', 'MX', 'NS', 'SRV']);
+const UI_DNS_TYPES = new Set<UiDnsRecordType>([
+  'A',
+  'AAAA',
+  'CNAME',
+  'ALIAS',
+  'TXT',
+  'SPF',
+  'MX',
+  'NS',
+  'SRV',
+  'PTR',
+  'CAA',
+]);
 
 /**
  * The API stores record values as type-specific objects — `{ ip }` for A,
@@ -466,8 +478,8 @@ export function toDnsRecord(raw: DnsRecord | (Partial<DnsRecord> & { _id?: strin
 
   return {
     id: str(raw.id) ?? str((raw as { _id?: string })._id) ?? `${raw.name}-${type}`,
-    // ALIAS/SPF/PTR/CAA exist upstream but the table has no column semantics
-    // for them; TXT is the closest honest rendering of "a string value".
+    // Keep every record type accepted by the allow-listed DNS API. Unknown
+    // future types still degrade to TXT instead of breaking the whole table.
     type: UI_DNS_TYPES.has(type as UiDnsRecordType) ? (type as UiDnsRecordType) : 'TXT',
     name: str(raw.name) ?? '@',
     values: recordValues(raw.contents),

@@ -91,6 +91,12 @@ const CONTINUATION = [
 'نه','خیر','no','ادامه بده','ادامه','انجام بده','برو','بعدی','همان','همون','درسته',
 ];
 
+/** Pure continuity check used by the request agent without trusting metadata. */
+export function isContinuationMessage(message: string): boolean {
+  const text = normalize(message);
+  return text.split(' ').filter(Boolean).length <= 4 && matched(text, CONTINUATION) !== null;
+}
+
 /** Looks like a Liara app/db name, e.g. `digishop-api`. Mentioning one implies state intent. */
 const RESOURCE_NAME = /[a-z][a-z0-9]*-[a-z0-9-]+/;
 
@@ -139,10 +145,9 @@ export async function route(
   opts: { previousLevel?: Level; collector: UsageCollector },
 ): Promise<RouteDecision> {
   const text = normalize(message);
-  const words = text.split(' ').filter(Boolean);
 
   // 1. Continuity: a short confirmation inherits the conversation's level.
-  if (opts.previousLevel && words.length <= 4 && matched(text, CONTINUATION)) {
+  if (opts.previousLevel && isContinuationMessage(message)) {
     return decide(
       opts.previousLevel,
       `پیام کوتاه و در ادامهٔ گفتگو است، پس همان سطح ${opts.previousLevel} قبلی حفظ شد (بدون هزینهٔ مسیریابی).`,

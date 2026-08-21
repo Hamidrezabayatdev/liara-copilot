@@ -11,6 +11,8 @@
  * ("what would this have cost on claude-opus-5 all the way through"), which by
  * definition never happened. That is labelled as an estimate in the UI.
  */
+import type { UsageMeta as ComponentUsageMeta } from '@/components/types';
+
 import type { CapturedCall, Tier, UsageCollector } from './provider';
 import { MODELS } from './provider';
 
@@ -20,21 +22,10 @@ import { MODELS } from './provider';
  * the components with no mapping layer; the extra fields here (baseline,
  * savings, tier, fallback) are additive and drive the session footer.
  */
-export type UsageMeta = {
-  model: string;
+export type UsageMeta = ComponentUsageMeta & {
   tier: Tier;
-  promptTokens: number;
-  completionTokens: number;
-  /** real billed cost, straight from Liara's `usage.total_cost_toman` */
-  toman: number;
-  toolCalls: number;
-  latencyMs: number;
-  /** 1 = direct answer, 2 = retrieval/inspect, 3 = full agentic reasoning */
-  escalation: 1 | 2 | 3;
   /** short Persian explanation of the route — the "چرا این مسیر؟" popover */
   routingReason: string;
-  cachedTokens?: number;
-  reasoningTokens?: number;
   /** set if the primary model failed and a fallback served the answer */
   viaFallback?: string;
   /** ESTIMATE: what this would have cost with the baseline model throughout */
@@ -76,7 +67,11 @@ export async function loadPricing(): Promise<Map<string, ModelPrice>> {
     return prices;
   }
   try {
-    const res = await fetch(`${base}/models`, { headers: { Authorization: `Bearer ${key}` } });
+    const res = await fetch(`${base}/models`, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(3_000),
+      cache: 'no-store',
+    });
     if (res.ok) {
       const body = (await res.json()) as { data?: unknown };
       const items = Array.isArray(body) ? body : Array.isArray(body.data) ? body.data : [];
@@ -120,6 +115,9 @@ export async function summarize(
   collector: UsageCollector,
   opts: { tier: Tier; escalation: 1 | 2 | 3; routingReason: string; toolCalls: number },
 ): Promise<UsageMeta> {
+  // The provider observes streamed billing data on a tee of the upstream SSE.
+  // Wait for those observers before folding the request into a UI total.
+  await Promise.allSettled(collector.pending ?? []);
   updateFxFrom(collector.calls);
   const calls = collector.calls;
   const billed = calls.filter(c => c.ok);
