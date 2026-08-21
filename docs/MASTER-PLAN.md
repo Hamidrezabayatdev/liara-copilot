@@ -20,19 +20,18 @@ Written 2026-08-21. Supersedes `ARCHITECTURE-NOTES.md` as the plan; defers to
 ```
 Phase 0  recon + verified facts .................... ██████████ 100%
 Phase 1  platform client + security ................ ██████████ 100%   24/24 tests
-Phase 2  retrieval ................................. ██████████ 100%   20/20 tests
-Phase 3  model routing + cost ...................... ██████████ 100%   22/22 tests
+Phase 2  retrieval ................................. ██████████ 100%   26/26 tests
+Phase 3  model routing + cost ...................... ██████████ 100%   35/35 tests
 Phase 4  UI kit (isolated components) .............. ██████████ 100%
-Phase 5  agent core ................................ ██████████ 100%   17/17 tests
+Phase 5  agent core ................................ ██████████ 100%   37/37 tests
 Phase 6  app shell + wiring ........................ ██████████ 100%   13/13 tests
-Phase 7  the three Skills .......................... ██████░░░░  60%   ← current
+Phase 7  the three Skills .......................... ██████████ 100%
 Phase 8  demo fleet (real deploys) ................. ░░░░░░░░░░   0%
-Phase 9  ship: config, README, deploy, video ........ ███░░░░░░░  30%
+Phase 9  ship: config, README, deploy, video ........ ███░░░░░░░  30%   ← current
 ```
 
-About **84% by effort**. The local V0 is complete and verified; the remaining
-work is the real demo fleet, the structured diagnostic verdict, deployment and
-video/public-repo shipping.
+About **88% by effort**. The local V1 product is complete and verified; the remaining
+work is the real demo fleet, deployment and video/public-repo shipping.
 
 ---
 
@@ -97,14 +96,15 @@ this exact version. Never write SDK code from memory.
 
 | Tier | Model | Used for |
 |---|---|---|
-| router | `google/gemini-3.7-flash` | classification, only when heuristics fail |
-| answer | `google/gemini-3.7-flash` | Level 1 and Level 2 |
-| reason | `anthropic/claude-sonnet-5` | Level 3 only |
+| router | `deepseek/deepseek-v4-flash` | classification, only when heuristics fail |
+| answer | `openai/gpt-5.6-luna` | Level 1 and Level 2 |
+| reason | `google/gemini-3.7-flash` | Level 3 only |
 | baseline | `anthropic/claude-opus-5` | **never called** — prices the counterfactual |
 | embed | `intfloat/multilingual-e5-large` | semantic retrieval, flag-gated |
 
-Opus-5 is exactly **13.3×** flash per token. That ratio is the entire cost story
-and the footer exists to show it.
+The live Liara catalogue prices these input tiers at $0.0826, $0.20 and $0.375
+per million tokens respectively. The footer computes the always-Opus comparison
+from current catalogue prices and actual usage; no fixed savings ratio is baked in.
 
 ### 2.4 Write scope — the security ceiling
 
@@ -289,9 +289,9 @@ model route around per-action rules. Only fine-grained named tools.
 
 | Level | Trigger | Model | Tools | Steps |
 |---|---|---|---|---|
-| **1** simple | definitional, "what is X" | flash | docs only | 2 |
-| **2** contextual | about *this* account | flash | docs + 12 read tools | 5 |
-| **3** troubleshooting | failure, or a write | **sonnet-5** | docs + reads + gated writes | 12 |
+| **1** simple | definitional, "what is X" | **GPT-5.6 Luna** | docs only | 2 · reasoning none · 1,600 output max |
+| **2** contextual | about *this* account | **GPT-5.6 Luna** | docs + 12 read tools | 5 · reasoning low · 2,400 output max |
+| **3** troubleshooting | failure, or a write | **Gemini 3.7 Flash** | docs + reads + gated writes | 12 · reasoning medium · 4,096 output max |
 
 **Routing is deterministic first.** Signal arrays are checked in a fixed order —
 continuity → L3 failure → L3 write → L2 strong → L1 frame → L2 weak + activator
@@ -315,6 +315,9 @@ latency · a «چرا این مسیر؟» popover explaining the routing decisio
 
 Per session: a footer comparing actual spend against an **always-opus-5**
 baseline for the identical conversation, and the percentage saved.
+
+If any successful failover call omits `total_cost_toman`, the UI labels the
+known subtotal as a lower bound and suppresses the baseline/savings claim.
 
 Toman is **read from the provider**, never estimated — Liara returns
 `usage.total_cost_toman` in a non-standard field, which the provider's
@@ -350,7 +353,7 @@ built by a different model. Returns `[]` rather than throwing when unavailable,
 and `searchDocs` reports the strategy that *actually* ran, never the one it
 intended.
 
-### 4.6 Tool inventory — 20
+### 4.6 Tool inventory — 21
 
 **Informational · Level 1+**
 `searchDocs`
@@ -363,6 +366,10 @@ intended.
 **Action · Level 3, all behind confirmation**
 `setEnvVars` · `restartApp` · `scaleApp` · `resizeApp` · `rollbackRelease` ·
 `createDnsRecord`
+
+**Presentation · Level 3, local and read-only**
+`reportDiagnosis` — renders one validated cause/evidence/confidence/fix card;
+its output is a tiny acknowledgement and it cannot execute the proposed fix.
 
 **Meta**
 `askUser` — no `execute`, so the client fulfils it and the loop suspends
@@ -406,18 +413,20 @@ classified R/W/X. Fleet provisioned. Corpus fetched. → `VERIFIED-FACTS.md`
 Types, allow-list, client, account, apps, dbs, dns, storage. All six writes
 return their own previous state.
 
-### ✅ Phase 2 — Retrieval · 723 lines · 20/20
+### ✅ Phase 2 — Retrieval · 26/26
 Normalisation, corpus, BM25, semantic, hybrid fusion (RRF k=60).
 `scripts/build-docs-index.mjs` builds the vector store when semantic is enabled.
 
-### ✅ Phase 3 — Model routing + cost · 22/22
+### ✅ Phase 3 — Model routing + cost · 35/35
 Provider with failover, cost accounting, escalation router and projections.
 The server accounting type extends the shared component `UsageMeta` contract.
 
 ### ✅ Phase 4 — UI kit
-Typecheck clean, including the specialist events, bucket and live-plan cards.
+Liara-native responsive workspace, streaming Markdown, pinned-scroll behavior,
+agent activity, adaptive evidence, and specialist app/database/events/bucket/
+live-plan cards. Typecheck and production build are clean.
 
-### ✅ Phase 5 — Agent core · 17/17
+### ✅ Phase 5 — Agent core · 37/37
 `tools.ts` · `approval.ts` · `capability.ts` · `agent.ts` · `prompts.ts`.
 Level-3 writes fail closed without a valid signing secret; approvals are bound
 to the account/capability and consumed once per single-instance V0 process; no
@@ -430,10 +439,11 @@ connection, account-switch clearing, same-origin/rate/concurrency guards and a
 responsive RTL shell. The second hero scenario now depends on Phase 8 data, not
 missing shell code.
 
-### 🚧 Phase 7 — The three Skills
-Prompt scaffolding for diagnosis, env changes and architecture plus a streamed
-tool checklist are live. Remaining: a reliably structured `diagnostic-result`
-verdict path.
+### ✅ Phase 7 — The three Skills
+Diagnosis, safe env changes and architecture workflows are injected only when
+their intent is present. Diagnosis ends with one bounded `reportDiagnosis` call,
+rendered as the evidence/cause/confidence/fix card; repeated verdict calls are
+suppressed within a loop and across automatic continuation requests.
 
 ### ⬜ Phase 8 — Demo fleet
 Deploy real code with `@liara/cli 9.4.7` (installed):
@@ -453,11 +463,11 @@ broken job.
 ## 6. The hero demo — both extremes, back to back
 
 **Take 1 — «لیارا چیست؟»**
-One tool call. Flash. Two steps. Answer with a docs citation. Badge shows a
+One tool call. GPT-5.6 Luna. Two steps. Answer with a docs citation. Badge shows a
 fraction of a Toman. *This question did not deserve an agent, and it did not get one.*
 
 **Take 2 — «چرا digishop-api پاسخ ۵۰۲ می‌دهد؟»**
-Level 3. Sonnet-5. The checklist fills in live: status ✓ → releases ✓ → logs ✓
+Level 3. Gemini 3.7 Flash. The checklist fills in live: status ✓ → releases ✓ → logs ✓
 (the error appears) → envs ✓ → cause found. `PORT=3000` is set but the process
 listens elsewhere. The agent proposes the fix, renders a Before/After diff, and
 **stops** for confirmation. Confirm → applied → restart → verify → green.

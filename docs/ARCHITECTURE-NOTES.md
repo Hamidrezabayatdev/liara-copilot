@@ -119,8 +119,10 @@ export type UsageMeta = { model: string; tier: 'router'|'answer'|'reason'; input
 Retrieval default: **BM25 only**. Semantic fully implemented, `ENABLE_SEMANTIC_RAG=false`, escalated only when BM25 confidence is low. Cost-driven, per owner decision.
 
 ## 4. Level routing
-- **L1** trivial → `google/gemini-3.7-flash`, docs tools only, `stepCountIs(2)`
-- **L2** contextual → flash + read tools, `stepCountIs(5)`
-- **L3** troubleshooting → `anthropic/claude-sonnet-5`, read + gated writes, `stepCountIs(12)`
+- **L1** trivial → `openai/gpt-5.6-luna`, docs tools only, `stepCountIs(2)`
+- **L2** contextual → `openai/gpt-5.6-luna` + read tools, `stepCountIs(5)`
+- **L3** troubleshooting → `google/gemini-3.7-flash`, read + gated writes, `stepCountIs(12)`
 
-Router is one cheap flash call returning `{level, why, tools}`; `why` feeds the "چرا این مسیر؟" popover. Deterministic pre-checks short-circuit before any model call.
+The fallback router is one `deepseek/deepseek-v4-flash` call returning
+`{level, why, tools}`; `why` feeds the "چرا این مسیر؟" popover. Deterministic
+pre-checks short-circuit before any model call.

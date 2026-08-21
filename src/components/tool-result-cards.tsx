@@ -111,57 +111,35 @@ function RecentAppEventsCard({
       </CardHeader>
 
       <CardContent className="pt-3">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>نوع و شناسه</TableHead>
-              <TableHead>شرح</TableHead>
-              <TableHead>زمان</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {events.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={3}
-                  className="text-muted-foreground py-6 text-center text-xs"
-                >
-                  API در این بررسی رویدادی برنگرداند.
-                </TableCell>
-              </TableRow>
-            ) : (
-              events.map((event, index) => (
-                <TableRow key={`${event.id}-${index}`}>
-                  <TableCell>
-                    <div className="flex min-w-36 flex-col items-start gap-1">
-                      <Badge variant="secondary" size="sm" dir="ltr">
-                        {event.type}
-                      </Badge>
-                      <Mono
-                        title={event.id}
-                        className="text-muted-foreground max-w-40 truncate text-[0.625rem]"
-                      >
-                        {event.id}
-                      </Mono>
-                    </div>
-                  </TableCell>
-                  <TableCell className="min-w-56 max-w-lg text-xs leading-5">
-                    <span dir="auto">
-                      {event.message || "توضیحی برای این رویداد ثبت نشده است."}
+        {events.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border px-4 py-7 text-center text-xs text-muted-foreground">
+            API در این بررسی رویدادی برنگرداند.
+          </p>
+        ) : (
+          <ol className="flex flex-col gap-0">
+            {events.map((event, index) => (
+              <li key={`${event.id}-${index}`} className="relative flex gap-3 pb-4 last:pb-0">
+                {index < events.length - 1 ? (
+                  <span className="absolute start-[0.4375rem] top-5 h-[calc(100%-0.5rem)] w-px bg-border" />
+                ) : null}
+                <span className="relative mt-1.5 size-3.5 shrink-0 rounded-full border-[3px] border-card bg-primary shadow-[0_0_0_1px_var(--border)]" />
+                <div className="min-w-0 flex-1 rounded-xl border border-border/60 bg-muted/20 px-3 py-2.5 transition-colors hover:border-primary/25 hover:bg-primary/[0.035]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary" size="sm" dir="ltr">{event.type}</Badge>
+                    <Mono title={event.id} className="max-w-44 truncate text-[0.625rem] text-muted-foreground">{event.id}</Mono>
+                    <span className="flex-1" />
+                    <span className="text-[0.625rem] text-muted-foreground">
+                      {hasValidTimestamp(event.createdAt) ? <TimeAgo value={event.createdAt} /> : "زمان نامشخص"}
                     </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
-                    {hasValidTimestamp(event.createdAt) ? (
-                      <TimeAgo value={event.createdAt} />
-                    ) : (
-                      "زمان نامشخص"
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                  </div>
+                  <p dir="auto" className="mt-1.5 text-xs leading-6 text-foreground/85">
+                    {event.message || "توضیحی برای این رویداد ثبت نشده است."}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
       </CardContent>
     </Card>
   );
@@ -193,59 +171,45 @@ function ObjectStorageBucketsCard({
       </CardHeader>
 
       <CardContent className="pt-3">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>نام</TableHead>
-              <TableHead>دسترسی</TableHead>
-              <TableHead>plan</TableHead>
-              <TableHead>ساخته‌شده</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {buckets.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="text-muted-foreground py-6 text-center text-xs"
-                >
-                  API در این بررسی باکتی برنگرداند.
-                </TableCell>
-              </TableRow>
-            ) : (
-              buckets.map((bucket, index) => (
-                <TableRow key={bucket.id ?? `${bucket.name}-${index}`}>
-                  <TableCell>
-                    <Mono className="font-medium">{bucket.name}</Mono>
-                  </TableCell>
-                  <TableCell>
-                    {bucket.permission ? (
-                      <Badge variant="outline" size="sm" dir="ltr">
-                        {bucket.permission}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">نامشخص</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {bucket.plan ? (
-                      <Mono>{bucket.plan}</Mono>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
-                    {hasValidTimestamp(bucket.createdAt) ? (
-                      <TimeAgo value={bucket.createdAt} />
-                    ) : (
-                      "زمان نامشخص"
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+        {buckets.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border px-4 py-7 text-center text-xs text-muted-foreground">
+            API در این بررسی باکتی برنگرداند.
+          </p>
+        ) : (
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {buckets.map((bucket, index) => (
+              <article
+                key={bucket.id ?? `${bucket.name}-${index}`}
+                className="group rounded-2xl border border-border/65 bg-muted/15 p-3.5 transition-[border-color,background-color,transform] duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.035]"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/8 text-primary">
+                    <BoxesIcon className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <Mono className="block truncate text-[0.8125rem] font-semibold">{bucket.name}</Mono>
+                    <p className="mt-0.5 text-[0.625rem] text-muted-foreground">فضای ذخیره‌سازی S3-compatible</p>
+                  </div>
+                  <Badge variant={bucket.permission === "private" ? "success" : "warning"} size="sm" dir="ltr">
+                    {bucket.permission ?? "unknown"}
+                  </Badge>
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-border/50 pt-3 text-[0.6875rem]">
+                  <div>
+                    <dt className="text-muted-foreground">plan</dt>
+                    <dd className="mt-0.5">{bucket.plan ? <Mono>{bucket.plan}</Mono> : "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">ساخته‌شده</dt>
+                    <dd className="mt-0.5 text-foreground/85">
+                      {hasValidTimestamp(bucket.createdAt) ? <TimeAgo value={bucket.createdAt} /> : "نامشخص"}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

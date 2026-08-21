@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  AlertTriangleIcon,
   BrainIcon,
   CoinsIcon,
   DatabaseZapIcon,
@@ -46,6 +47,12 @@ const ESCALATION: Record<
 };
 
 function shortModel(model: string): string {
+  if (model.endsWith("deepseek/deepseek-v4-flash")) {
+    return "DeepSeek V4 Flash 0423";
+  }
+  if (model.endsWith("openai/gpt-5.6-luna")) return "GPT-5.6 Luna";
+  if (model.endsWith("google/gemini-3.7-flash")) return "Gemini 3.7 Flash";
+  if (model.endsWith("anthropic/claude-opus-5")) return "Claude Opus 5";
   const slash = model.lastIndexOf("/");
   return slash === -1 ? model : model.slice(slash + 1);
 }
@@ -98,7 +105,9 @@ function CostBadge({
 }: CostBadgeProps) {
   const esc = ESCALATION[usage.escalation];
   const saved =
-    typeof baselineToman === "number" && baselineToman > usage.toman
+    usage.costComplete !== false &&
+    typeof baselineToman === "number" &&
+    baselineToman > usage.toman
       ? baselineToman - usage.toman
       : undefined;
 
@@ -128,8 +137,16 @@ function CostBadge({
         <span className={cn("font-semibold", esc.tone)}>{esc.label}</span>
         <Separator orientation="vertical" className="h-3" />
         <Mono className="text-[0.625rem]">{shortModel(usage.model)}</Mono>
-        <Stat icon={CoinsIcon} title="هزینهٔ واقعی این پیام">
+        <Stat
+          icon={CoinsIcon}
+          title={
+            usage.costComplete === false
+              ? "کمینهٔ هزینهٔ ثبت‌شده برای این پیام"
+              : "هزینهٔ واقعی این پیام"
+          }
+        >
           <span dir="ltr" className="ltr-embed font-mono tabular-nums">
+            {usage.costComplete === false ? "≥" : ""}
             {formatToman(usage.toman)}
           </span>
           <span>تومان</span>
@@ -234,10 +251,19 @@ function CostBadge({
             </p>
           ) : null}
 
+          {usage.costComplete === false ? (
+            <p className="border-warning/25 bg-warning/8 text-warning flex items-start gap-1.5 rounded-md border px-2 py-1.5 text-[0.625rem] leading-5">
+              <AlertTriangleIcon className="mt-0.5 size-3 shrink-0" />
+              یک provider هزینهٔ تومان را برنگرداند؛ این عدد فقط جمع هزینه‌های ثبت‌شده است.
+            </p>
+          ) : null}
+
           <div className="border-border/70 flex items-end justify-between gap-3 rounded-md border p-2.5">
             <div>
               <span className="text-muted-foreground block text-[0.625rem]">
-                هزینهٔ این پیام
+                {usage.costComplete === false
+                  ? "هزینهٔ ثبت‌شدهٔ این پیام"
+                  : "هزینهٔ این پیام"}
               </span>
               <span className="flex items-baseline gap-1">
                 <span

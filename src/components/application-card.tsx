@@ -183,8 +183,12 @@ function ApplicationCard({
                 آخرین deploy
                 <TimeAgo value={app.lastDeployedAt} />
               </span>
-            ) : (
+            ) : app.isDeployed === true ? (
+              <span>deploy شده</span>
+            ) : app.isDeployed === false ? (
               <span>هنوز deploy نشده</span>
+            ) : (
+              <span>زمان deploy نامشخص</span>
             )}
           </p>
         </div>
@@ -208,13 +212,13 @@ function ApplicationCard({
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-4 py-3.5 text-xs sm:grid-cols-4">
         <div className="min-w-0">
-          <dt className="text-muted-foreground text-[0.6875rem]">plan</dt>
+          <dt className="text-muted-foreground text-[0.6875rem]">پلن</dt>
           <dd className="mt-0.5">
             <Mono className="font-medium">{app.planId}</Mono>
           </dd>
         </div>
         <div className="min-w-0">
-          <dt className="text-muted-foreground text-[0.6875rem]">scale</dt>
+          <dt className="text-muted-foreground text-[0.6875rem]">تعداد نمونه‌ها</dt>
           <dd className="mt-0.5">
             <span
               dir="ltr"
@@ -231,13 +235,13 @@ function ApplicationCard({
           </dd>
         </div>
         <div className="min-w-0">
-          <dt className="text-muted-foreground text-[0.6875rem]">region</dt>
+          <dt className="text-muted-foreground text-[0.6875rem]">ناحیه</dt>
           <dd className="mt-0.5">
             <Mono className="font-medium">{app.region}</Mono>
           </dd>
         </div>
         <div className="min-w-0">
-          <dt className="text-muted-foreground text-[0.6875rem]">network</dt>
+          <dt className="text-muted-foreground text-[0.6875rem]">شبکهٔ خصوصی</dt>
           <dd className="mt-0.5">
             {app.network ? (
               <Mono className="font-medium">{app.network}</Mono>
@@ -310,9 +314,9 @@ function ApplicationCard({
       data-slot="application-card"
       data-active={active || undefined}
       className={cn(
-        "gap-0 overflow-hidden transition-[border-color,box-shadow,transform] duration-200",
+        "gap-0 overflow-hidden border-primary/15 bg-card/72 transition-[border-color,box-shadow,transform] duration-300",
         interactive &&
-          "hover:border-primary/45 hover:shadow-md focus-within:border-primary/45",
+          "hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-lg focus-within:border-primary/45",
         active && "border-primary/60 ring-primary/20 ring-2",
         className,
       )}
@@ -352,13 +356,13 @@ function ApplicationCard({
           {onViewLogs ? (
             <Button variant="ghost" size="xs" onClick={() => onViewLogs(app)}>
               <ScrollTextIcon />
-              logs
+              لاگ‌ها
             </Button>
           ) : null}
           {onViewDeployments ? (
             <Button variant="ghost" size="xs" onClick={() => onViewDeployments(app)}>
               <LayersIcon />
-              releases
+              نسخه‌ها
             </Button>
           ) : null}
         </div>

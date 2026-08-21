@@ -2,7 +2,22 @@
 
 یک دستیار فارسی و RTL برای Liara که بین پاسخ ساده، بررسی زندهٔ حساب و
 عیب‌یابی چندمرحله‌ای کم‌هزینه‌ترین مسیر مناسب را انتخاب می‌کند. این پروژه برای
-هکاتون ساخته شده و اکنون یک نسخهٔ صفر قابل اجرا است؛ هنوز روی Liara عمومی نشده.
+هکاتون ساخته شده و اکنون V1 محلی آن قابل اجرا و build است؛ هنوز روی Liara عمومی نشده.
+
+## تجربهٔ V1
+
+- رابط کامل RTL با زبان بصری فعلی Liara، motion کنترل‌شده و کارت‌های تخصصی برای
+  app، database، release، log، metric، DNS، bucket، plan و اسناد رسمی.
+- Markdown کامل و امن با نمایش زندهٔ heading، list، table و code؛ خروجی هنگام
+  streaming به‌صورت تدریجی ظاهر می‌شود.
+- اسکرول مکالمه فقط وقتی کاربر پایین صفحه است پاسخ را دنبال می‌کند؛ هنگام مطالعهٔ
+  پیام‌های قبلی جای کاربر حفظ و دکمهٔ «جدیدترین پاسخ» نمایش داده می‌شود.
+- بازیابی اسناد تعداد ثابتی را تحمیل نمی‌کند: خوشهٔ مرتبط را تا اولین افت معنادار
+  نگه می‌دارد، دنبالهٔ ضعیف را حذف می‌کند و حداکثر چهار منبع می‌فرستد.
+- context مدل و schema ابزارها متناسب با turn کوچک می‌شوند و یک جست‌وجوی موفق
+  مستندات در همان turn دوباره اجرا نمی‌شود.
+- عیب‌یابی Level 3 با یک کارت ساختاریافتهٔ cause/evidence/confidence/fix تمام
+  می‌شود؛ دکمهٔ اصلاح فقط یک turn امن تازه می‌سازد و مسیر تأیید را دور نمی‌زند.
 
 ## اجرای محلی
 
@@ -46,7 +61,7 @@ pnpm dev
 
 | سناریو | پیام نمونه | انتظار |
 |---|---|---|
-| پاسخ مستنداتی | `لیارا چیست؟` | Level 1، مدل Flash، جست‌وجوی مستندات و citation |
+| پاسخ مستنداتی | `لیارا چیست؟` | Level 1، مدل GPT-5.6 Luna، جست‌وجوی مستندات و citation |
 | مشاهدهٔ حساب | `چه اپ‌هایی در حساب من فعال هستند؟` | Level 2، کارت اپ‌ها بدون تغییر حساب |
 | ماندگاری | یک سؤال بپرسید و صفحه را refresh کنید | گفتگو و جمع هزینه از IndexedDB بازیابی می‌شود |
 | دادهٔ حساس | `متغیرهای محیطی digishop-api را نشان بده` | مقدار secretها پیش از رسیدن به مدل redacted می‌شود |
@@ -62,7 +77,7 @@ pnpm dev
 ```bash
 pnpm lint
 pnpm exec tsc --noEmit
-node --import ./scripts/register-ts.mjs --test src/lib/**/*.test.ts
+pnpm test
 pnpm build
 ```
 
@@ -80,8 +95,8 @@ node scripts/test-liara-client.mjs
 ```text
 Persian chat UI
   → deterministic escalation router (Level 1 / 2 / 3)
-  → Liara AI: Flash for cheap answers, Sonnet only for troubleshooting
-  → 20 narrow tools
+  → Liara AI: DeepSeek V4 Flash router → GPT-5.6 Luna answers → Gemini 3.7 Flash reasoning
+  → 21 narrow tools (18 Liara operations + docs + diagnosis presenter + askUser)
        ├─ bundled Liara docs: BM25, semantic retrieval optional
        └─ allow-listed Liara management client
   → streamed tool cards + real Toman usage metadata
@@ -118,7 +133,7 @@ liara deploy --app=liara-copilot-ir --platform=next --team-id="$LIARA_TEAM_ID"
 مستندات زمانی اضافه می‌شوند که endpoint مربوطه پیاده‌سازی شده باشد؛ snapshot
 فعلی مستندات همراه کد است.
 
-## محدودیت‌های صادقانهٔ v0
+## محدودیت‌های صادقانهٔ V1 محلی
 
 - demo fleet هنوز code deployment ندارد؛ hero demo کامل 502 آماده نیست.
 - semantic retrieval پیاده‌سازی شده ولی برای کنترل هزینه پیش‌فرض خاموش است.

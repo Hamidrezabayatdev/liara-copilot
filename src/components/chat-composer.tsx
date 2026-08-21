@@ -101,28 +101,35 @@ function ChatComposer({
       {suggestions.length > 0 && text.length === 0 ? (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {suggestions.map((s) => (
-            <button
+            <Button
               key={s.id}
               type="button"
+              variant="subtle"
+              size="xs"
               disabled={disabled}
               onClick={() => {
                 setText(s.value ?? s.label);
                 ref.current?.focus();
               }}
-              className="border-border/80 bg-card text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/[0.06] focus-visible:ring-ring/40 rounded-full border px-2.5 py-1 text-[0.6875rem] transition-colors outline-none focus-visible:ring-[3px] disabled:opacity-50"
+              className="rounded-full"
             >
               {s.label}
-            </button>
+            </Button>
           ))}
         </div>
       ) : null}
 
       <div
         className={cn(
-          "bg-card border-border/80 focus-within:border-primary/50 focus-within:ring-primary/15 relative rounded-xl border shadow-sm transition-[border-color,box-shadow] focus-within:ring-4",
+          "liara-gradient-surface bg-card/92 focus-within:ring-primary/10 relative overflow-hidden rounded-[1.35rem] shadow-[0_20px_65px_-32px_color-mix(in_oklab,var(--brand-cyan)_55%,transparent)] backdrop-blur-2xl transition-[box-shadow,transform] duration-300 focus-within:ring-4",
           disabled && "opacity-60",
         )}
       >
+        {streaming ? (
+          <span className="absolute inset-x-0 top-0 h-px overflow-hidden" aria-hidden>
+            <span className="absolute inset-y-0 end-0 w-1/2 animate-sheen bg-[image:var(--brand-gradient)]" />
+          </span>
+        ) : null}
         {contextLabel ? (
           <div className="border-border/60 flex items-center gap-1.5 border-b px-3 py-1.5">
             <PaperclipIcon className="text-muted-foreground size-3" />
@@ -149,10 +156,10 @@ function ChatComposer({
           onKeyDown={onKeyDown}
           onChange={(e) => setText(e.target.value)}
           aria-label="پیام به دستیار"
-          className="scrollbar-slim placeholder:text-muted-foreground/70 block w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-start text-[0.8125rem] leading-7 outline-none disabled:cursor-not-allowed"
+          className="scrollbar-slim placeholder:text-muted-foreground/65 block w-full resize-none bg-transparent px-4 pt-3.5 pb-1 text-start text-[0.875rem] leading-7 outline-none disabled:cursor-not-allowed sm:px-5"
         />
 
-        <div className="flex items-center gap-2 px-2.5 pt-0.5 pb-2">
+        <div className="flex items-center gap-2 px-3 pt-0.5 pb-2.5 sm:px-4">
           <span className="text-muted-foreground/70 hidden text-[0.625rem] sm:inline">
             <kbd className="border-border bg-muted rounded-[0.25rem] border px-1 py-px font-sans">
               Enter
@@ -178,12 +185,13 @@ function ChatComposer({
           {streaming ? (
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={onStop}
               aria-label="توقف پاسخ"
+              className="rounded-full"
             >
-              <SquareIcon className="fill-current" />
+              <SquareIcon data-icon="inline-start" className="fill-current" />
               توقف
             </Button>
           ) : (
@@ -193,7 +201,7 @@ function ChatComposer({
               onClick={send}
               disabled={!canSend}
               aria-label="ارسال پیام"
-              className="rounded-full"
+              className="rounded-full shadow-[0_8px_24px_-10px_var(--brand-cyan)]"
             >
               <ArrowUpIcon />
             </Button>

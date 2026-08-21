@@ -32,7 +32,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-background/70 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         className,
       )}
       {...props}
@@ -55,7 +55,7 @@ function DialogContent({
         data-slot="dialog-content"
         dir="rtl"
         className={cn(
-          "bg-card text-card-foreground fixed top-1/2 start-1/2 z-50 grid w-[calc(100%-2rem)] max-w-lg gap-0 overflow-hidden rounded-xl border border-border shadow-2xl shadow-black/25 duration-200",
+          "liara-gradient-surface bg-card/95 text-card-foreground fixed top-1/2 start-1/2 z-50 grid w-[calc(100%-2rem)] max-w-lg gap-0 overflow-hidden rounded-3xl shadow-[var(--panel-shadow)] backdrop-blur-2xl duration-300",
           /* start-1/2 in RTL pins the end edge to centre; translateX(50%) is a
              visual (never mirrored) shift, so this centres correctly. */
           "translate-x-1/2 -translate-y-1/2",

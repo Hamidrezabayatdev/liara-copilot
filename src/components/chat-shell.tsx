@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { useChat } from "@ai-sdk/react";
 import {
   DefaultChatTransport,
@@ -11,13 +12,23 @@ import {
 } from "ai";
 import {
   CheckCircle2Icon,
+  ActivityIcon,
+  ArrowDownIcon,
+  ArrowLeftIcon,
+  BookOpenTextIcon,
+  BoxesIcon,
+  ChevronDownIcon,
   CircleXIcon,
-  CloudCogIcon,
+  DatabaseIcon,
+  GaugeIcon,
+  Globe2Icon,
+  Layers3Icon,
   LoaderCircleIcon,
+  RouteIcon,
   SearchCheckIcon,
   ShieldCheckIcon,
-  SparklesIcon,
   Trash2Icon,
+  WandSparklesIcon,
 } from "lucide-react";
 
 import { ApplicationCard } from "@/components/application-card";
@@ -27,7 +38,13 @@ import { AskUserPrompt, type AskUserOption } from "@/components/ask-user-prompt"
 import { BeforeAfterDiff } from "@/components/before-after-diff";
 import { ChatComposer } from "@/components/chat-composer";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
+import { DatabaseCard } from "@/components/database-card";
 import { DeploymentCard } from "@/components/deployment-card";
+import {
+  DiagnosticResult,
+  type DiagnosticRecommendation,
+  type DiagnosticSeverity,
+} from "@/components/diagnostic-result";
 import { DnsRecordsTable } from "@/components/dns-records-table";
 import { EnvEditor } from "@/components/env-editor";
 import { LogViewer } from "@/components/log-viewer";
@@ -51,13 +68,16 @@ import type {
   AppPlatform,
   AppStatus,
   ChecklistStep,
+  DatabaseEngine,
   Deployment,
   DeploymentState,
   DiffRow,
   DnsRecord,
   DnsRecordType,
+  Evidence,
   EnvVar,
   LiaraApp,
+  LiaraDatabase,
   LogLine,
   LogSeverity,
   MetricSeries,
@@ -76,6 +96,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -83,7 +108,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   clearChatHistory,
@@ -94,20 +118,46 @@ import {
   subscribeToChatHistory,
 } from "@/lib/chat-history";
 import { subscribeToAccountChanges } from "@/lib/account-events";
+import { cn } from "@/lib/utils";
 
 const transport = new DefaultChatTransport({ api: "/api/chat" });
 
 const HERO_PROMPTS = [
   {
     id: "diagnose",
+    eyebrow: "عیب‌یابی زنده",
     label: "چرا digishop-api خطای ۵۰۲ می‌دهد؟",
+    detail: "لاگ، رویداد و متریک‌ها را کنار هم بررسی کن",
     icon: SearchCheckIcon,
   },
   {
-    id: "about",
-    label: "لیارا چیست و چه سرویس‌هایی دارد؟",
-    icon: CloudCogIcon,
+    id: "inventory",
+    eyebrow: "نمای حساب",
+    label: "وضعیت برنامه‌ها و دیتابیس‌های من چطور است؟",
+    detail: "منابع واقعی حساب را خلاصه و اولویت‌بندی کن",
+    icon: Layers3Icon,
   },
+  {
+    id: "docs",
+    eyebrow: "مستندات رسمی",
+    label: "برای deploy امن Next.js چه تنظیماتی لازم است؟",
+    detail: "پاسخ کوتاه با دقیق‌ترین منابع مرتبط",
+    icon: BookOpenTextIcon,
+  },
+  {
+    id: "cost",
+    eyebrow: "بهینه‌سازی",
+    label: "برای کم‌کردن هزینهٔ این سرویس چه پیشنهاد داری؟",
+    detail: "پلن و مصرف را بدون افت عملکرد تحلیل کن",
+    icon: GaugeIcon,
+  },
+] as const;
+
+const RESOURCE_PROMPTS = [
+  { label: "برنامه‌ها", icon: BoxesIcon, prompt: "برنامه‌های حسابم را بررسی کن" },
+  { label: "دیتابیس", icon: DatabaseIcon, prompt: "دیتابیس‌های حسابم را بررسی کن" },
+  { label: "DNS", icon: Globe2Icon, prompt: "رکوردهای DNS حسابم را بررسی کن" },
+  { label: "مستندات", icon: BookOpenTextIcon, prompt: "در مستندات لیارا جست‌وجو کن" },
 ] as const;
 
 const TOOL_LABELS: Record<string, string> = {
@@ -124,6 +174,7 @@ const TOOL_LABELS: Record<string, string> = {
   listBuckets: "دریافت باکت‌ها",
   listDnsRecords: "بررسی رکوردهای DNS",
   getPlans: "دریافت پلن‌های زنده",
+  reportDiagnosis: "ساخت نتیجهٔ عیب‌یابی",
   setEnvVars: "تغییر متغیرهای محیطی",
   restartApp: "ری‌استارت اپلیکیشن",
   scaleApp: "تغییر تعداد نمونه‌ها",
@@ -248,6 +299,18 @@ const APP_PLATFORMS = new Set<AppPlatform>([
   "redis",
 ]);
 
+const DATABASE_ENGINES = new Set<DatabaseEngine>([
+  "postgres",
+  "mysql",
+  "mongodb",
+  "redis",
+  "mariadb",
+  "mssql",
+  "elasticsearch",
+  "rabbitmq",
+  "unknown",
+]);
+
 const APP_STATUSES = new Set<AppStatus>([
   "ACTIVE",
   "STOPPED",
@@ -266,6 +329,21 @@ function isApp(value: unknown): value is LiaraApp {
     isFiniteNumber(value.scale) &&
     typeof value.region === "string" &&
     typeof value.createdAt === "string"
+  );
+}
+
+function isDatabase(value: unknown): value is LiaraDatabase {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === "string" &&
+    typeof value.hostname === "string" &&
+    DATABASE_ENGINES.has(value.engine as DatabaseEngine) &&
+    APP_STATUSES.has(value.status as AppStatus) &&
+    typeof value.planId === "string" &&
+    typeof value.region === "string" &&
+    typeof value.createdAt === "string" &&
+    typeof value.publicNetwork === "boolean" &&
+    isFiniteNumber(value.scale)
   );
 }
 
@@ -341,6 +419,84 @@ function isSource(value: unknown): value is Source {
     (value.url === undefined || typeof value.url === "string") &&
     (value.origin === undefined || typeof value.origin === "string")
   );
+}
+
+type DiagnosisView = {
+  symptom: string;
+  rootCause: string;
+  evidence: Evidence[];
+  recommendation: DiagnosticRecommendation;
+  confidence: number;
+  severity: DiagnosticSeverity;
+  appName?: string;
+};
+
+const DIAGNOSTIC_SEVERITIES = new Set<DiagnosticSeverity>([
+  "critical",
+  "degraded",
+  "healthy",
+]);
+
+function diagnosisInput(value: unknown): DiagnosisView | null {
+  if (!isRecord(value) || !isRecord(value.recommendation)) return null;
+  const symptom = stringField(value, "symptom");
+  const rootCause = stringField(value, "rootCause");
+  const title = stringField(value.recommendation, "title");
+  if (
+    !symptom ||
+    !rootCause ||
+    !title ||
+    !isFiniteNumber(value.confidence) ||
+    value.confidence < 0 ||
+    value.confidence > 1 ||
+    !DIAGNOSTIC_SEVERITIES.has(value.severity as DiagnosticSeverity)
+  ) {
+    return null;
+  }
+
+  const evidence = Array.isArray(value.evidence)
+    ? value.evidence
+        .slice(0, 6)
+        .map((item, index): Evidence | null => {
+          if (!isRecord(item)) return null;
+          const text = stringField(item, "text");
+          const sourceKind = stringField(item, "sourceKind");
+          if (
+            !text ||
+            !sourceKind ||
+            !["docs", "account", "inference"].includes(sourceKind)
+          ) {
+            return null;
+          }
+          return {
+            id: `diagnostic-evidence-${index}`,
+            text,
+            sourceKind: sourceKind as Evidence["sourceKind"],
+            sourceId: stringField(item, "sourceId"),
+          };
+        })
+        .filter((item): item is Evidence => item !== null)
+    : [];
+  const steps = Array.isArray(value.recommendation.steps)
+    ? value.recommendation.steps
+        .filter((step): step is string => typeof step === "string" && step.length > 0)
+        .slice(0, 5)
+    : undefined;
+
+  return {
+    symptom,
+    rootCause,
+    evidence,
+    recommendation: {
+      title,
+      detail: stringField(value.recommendation, "detail"),
+      steps,
+      actionLabel: stringField(value.recommendation, "actionLabel"),
+    },
+    confidence: value.confidence,
+    severity: value.severity as DiagnosticSeverity,
+    appName: stringField(value, "appName"),
+  };
 }
 
 function isEnvVar(value: unknown): value is EnvVar {
@@ -442,6 +598,19 @@ function messageUsage(metadata: unknown): {
     : undefined;
   if (!isRecord(raw)) return { baselineToman };
 
+  const modelBreakdown = Array.isArray(raw.modelBreakdown)
+    ? raw.modelBreakdown
+        .map((item): ModelUsageBreakdown | null => {
+          if (!isRecord(item)) return null;
+          const itemModel = stringField(item, "model");
+          if (!itemModel || !isFiniteNumber(item.calls) || !isFiniteNumber(item.toman)) {
+            return null;
+          }
+          return { model: itemModel, calls: item.calls, toman: item.toman };
+        })
+        .filter((item): item is ModelUsageBreakdown => item !== null)
+    : undefined;
+
   const model = stringField(raw, "model");
   const promptTokens = isFiniteNumber(raw.promptTokens)
     ? raw.promptTokens
@@ -474,11 +643,14 @@ function messageUsage(metadata: unknown): {
         ? raw.reasoningTokens
         : undefined,
       toman: raw.toman,
+      costComplete:
+        typeof raw.costComplete === "boolean" ? raw.costComplete : undefined,
       toolCalls: raw.toolCalls,
       latencyMs: raw.latencyMs,
       escalation: Number(escalation) as 1 | 2 | 3,
       routingReason:
         stringField(raw, "routingReason") ?? stringField(raw, "why"),
+      modelBreakdown,
     },
   };
 }
@@ -492,6 +664,8 @@ type SessionTotals = {
   cachedTokens: number;
   toolCalls: number;
   breakdown: ModelUsageBreakdown[];
+  baselineAvailable: boolean;
+  costComplete: boolean;
 };
 
 function sessionTotals(messages: UIMessage[]): SessionTotals {
@@ -503,6 +677,8 @@ function sessionTotals(messages: UIMessage[]): SessionTotals {
     totalCompletionTokens: 0,
     cachedTokens: 0,
     toolCalls: 0,
+    baselineAvailable: true,
+    costComplete: true,
   };
   const byModel = new Map<string, ModelUsageBreakdown>();
 
@@ -514,18 +690,28 @@ function sessionTotals(messages: UIMessage[]): SessionTotals {
     const usage = metadata.usage;
     totals.messages += 1;
     totals.totalToman += usage.toman;
-    totals.baselineToman += metadata.baselineToman ?? usage.toman;
+    if (usage.costComplete === false) totals.costComplete = false;
+    if (typeof metadata.baselineToman === "number" && metadata.baselineToman > 0) {
+      totals.baselineToman += metadata.baselineToman;
+    } else {
+      totals.baselineAvailable = false;
+    }
     totals.totalPromptTokens += usage.promptTokens;
     totals.totalCompletionTokens += usage.completionTokens;
     totals.cachedTokens += usage.cachedTokens ?? 0;
     totals.toolCalls += usage.toolCalls;
 
-    const current = byModel.get(usage.model);
-    byModel.set(usage.model, {
-      model: usage.model,
-      calls: (current?.calls ?? 0) + 1,
-      toman: (current?.toman ?? 0) + usage.toman,
-    });
+    const breakdown = usage.modelBreakdown?.length
+      ? usage.modelBreakdown
+      : [{ model: usage.model, calls: 1, toman: usage.toman }];
+    for (const item of breakdown) {
+      const current = byModel.get(item.model);
+      byModel.set(item.model, {
+        model: item.model,
+        calls: (current?.calls ?? 0) + item.calls,
+        toman: (current?.toman ?? 0) + item.toman,
+      });
+    }
   }
 
   return { ...totals, breakdown: [...byModel.values()] };
@@ -737,11 +923,45 @@ function ToolStatus({
   const Icon = meta.icon;
 
   return (
-    <Alert variant={meta.variant}>
+    <Alert
+      variant={meta.variant}
+      className={cn(
+        "animate-rise bg-card/55",
+        state === "loading" && "border-primary/35 shadow-[0_12px_36px_-28px_var(--brand-cyan)]",
+      )}
+    >
       <Icon className={state === "loading" ? "animate-spin" : undefined} />
       <AlertTitle>{label}</AlertTitle>
       <AlertDescription>{meta.text}</AlertDescription>
+      {state === "loading" ? (
+        <span className="absolute inset-x-0 bottom-0 h-px overflow-hidden" aria-hidden>
+          <span className="absolute inset-y-0 end-0 w-1/2 animate-sheen bg-[image:var(--brand-gradient)]" />
+        </span>
+      ) : null}
     </Alert>
+  );
+}
+
+function DocsEvidence({ sources }: { sources: Source[] }) {
+  const [open, setOpen] = React.useState(sources.length === 1);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-2xl border border-provenance-docs/25 bg-provenance-docs/[0.045] p-2">
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="w-full justify-between rounded-xl">
+          <span className="inline-flex items-center gap-2">
+            <BookOpenTextIcon data-icon="inline-start" />
+            {sources.length.toLocaleString("fa-IR")} منبع رسمی مرتبط استفاده شد
+          </span>
+          <ChevronDownIcon data-icon="inline-end" className={cn("transition-transform", open && "rotate-180")} />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="grid gap-2 p-1 pt-2 sm:grid-cols-2">
+        {sources.map((source, index) => (
+          <SourceCard key={source.id} source={source} index={index + 1} compact={sources.length > 2} />
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -749,25 +969,75 @@ function StructuredToolOutput({
   name,
   output,
   input,
+  onFollowUp,
 }: {
   name: string;
   output: unknown;
   input: unknown;
+  onFollowUp?: (prompt: string) => void;
 }) {
   if (failedResult(output)) return <ToolStatus name={name} state="error" />;
   const payload = unwrapResult(output);
 
-  if (["listApps", "getApp", "listDatabases", "getDatabase"].includes(name)) {
-    const singular = valueAt(payload, ["app", "database"]);
-    const rows = singular
-      ? [singular]
-      : arrayAt(payload, ["apps", "databases"]);
+  if (name === "reportDiagnosis") {
+    const diagnosis = diagnosisInput(input);
+    if (diagnosis) {
+      const target = diagnosis.appName ? ` برنامه ${diagnosis.appName}` : "";
+      return (
+        <DiagnosticResult
+          {...diagnosis}
+          onApplyFix={
+            onFollowUp && diagnosis.severity !== "healthy"
+              ? () =>
+                  onFollowUp(
+                    `اصلاح پیشنهادی «${diagnosis.recommendation.title}» را برای${target} بررسی کن؛ وضعیت فعلی را دوباره بخوان، Before/After را نشان بده و پیش از هر تغییر برای تأیید متوقف شو.`,
+                  )
+              : undefined
+          }
+          onEscalate={
+            onFollowUp
+              ? () =>
+                  onFollowUp(
+                    `برای مشکل «${diagnosis.symptom}»${target} یک خلاصهٔ کوتاه و قابل کپی برای پشتیبانی لیارا بساز؛ اقدامات و شواهد فعلی را هم بیاور.`,
+                  )
+              : undefined
+          }
+        />
+      );
+    }
+  }
+
+  if (["listApps", "getApp"].includes(name)) {
+    const singular = valueAt(payload, ["app"]);
+    const rows = singular ? [singular] : arrayAt(payload, ["apps"]);
     const apps = rows.filter(isApp).slice(0, 12);
     if (apps.length > 0) {
       return (
         <div className="flex flex-col gap-2.5">
           {apps.map((app) => (
-            <ApplicationCard key={app.id} app={app} compact={apps.length > 2} />
+            <ApplicationCard
+              key={app.id}
+              app={app}
+              compact={apps.length > 2}
+              onSelect={onFollowUp ? () => onFollowUp(`وضعیت کامل برنامه ${app.name} را بررسی کن`) : undefined}
+              onViewLogs={onFollowUp ? () => onFollowUp(`لاگ‌های اخیر برنامه ${app.name} را بررسی و خطاها را تحلیل کن`) : undefined}
+              onViewDeployments={onFollowUp ? () => onFollowUp(`releaseهای اخیر برنامه ${app.name} را بررسی کن`) : undefined}
+            />
+          ))}
+        </div>
+      );
+    }
+  }
+
+  if (["listDatabases", "getDatabase"].includes(name)) {
+    const singular = valueAt(payload, ["database"]);
+    const rows = singular ? [singular] : arrayAt(payload, ["databases"]);
+    const databases = rows.filter(isDatabase).slice(0, 12);
+    if (databases.length > 0) {
+      return (
+        <div className="flex flex-col gap-2.5">
+          {databases.map((database) => (
+            <DatabaseCard key={database.id} database={database} compact={databases.length > 2} />
           ))}
         </div>
       );
@@ -811,7 +1081,12 @@ function StructuredToolOutput({
       return (
         <div className="flex flex-col gap-2.5">
           {releases.map((release) => (
-            <DeploymentCard key={release.id} deployment={release} />
+            <DeploymentCard
+              key={release.id}
+              deployment={release}
+              onViewLogs={onFollowUp ? () => onFollowUp(`لاگ build مربوط به release ${release.id} برنامه ${release.appName} را بررسی کن`) : undefined}
+              onRollback={onFollowUp ? () => onFollowUp(`می‌خواهم برنامه ${release.appName} را به release ${release.id} برگردانم؛ ابتدا تغییر را بررسی و برای تأیید آماده کن`) : undefined}
+            />
           ))}
         </div>
       );
@@ -902,13 +1177,7 @@ function StructuredToolOutput({
       .filter(isSource)
       .slice(0, 6);
     if (sources.length > 0) {
-      return (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {sources.map((source, index) => (
-            <SourceCard key={source.id} source={source} index={index + 1} />
-          ))}
-        </div>
-      );
+      return <DocsEvidence sources={sources} />;
     }
   }
 
@@ -933,6 +1202,7 @@ function ToolPart({
   part,
   busy,
   onAskAnswer,
+  onFollowUp,
 }: {
   part: LooseToolPart;
   busy: boolean;
@@ -940,6 +1210,7 @@ function ToolPart({
     toolCallId: string,
     output: { optionId?: string; text?: string },
   ) => void;
+  onFollowUp: (prompt: string) => void;
 }) {
   const name = toolName(part);
 
@@ -999,7 +1270,14 @@ function ToolPart({
   if (part.state === "output-denied") {
     return <ToolStatus name={name} state="denied" />;
   }
-  return <StructuredToolOutput name={name} output={part.output} input={part.input} />;
+  return (
+    <StructuredToolOutput
+      name={name}
+      output={part.output}
+      input={part.input}
+      onFollowUp={busy ? undefined : onFollowUp}
+    />
+  );
 }
 
 function checklistSteps(parts: LooseToolPart[]): ChecklistStep[] {
@@ -1068,24 +1346,50 @@ function EmptyChat({
   onPrompt: (prompt: string) => void;
 }) {
   return (
-    <div className="flex flex-1 items-center justify-center py-8 sm:py-12">
-      <Card className="w-full max-w-2xl border-primary/20 bg-card/80">
-        <CardHeader className="items-center px-5 pt-7 text-center sm:px-8 sm:pt-9">
-          <span className="border-primary/25 bg-primary/10 text-primary grid size-12 place-items-center rounded-xl border">
-            <SparklesIcon className="size-6" />
-          </span>
-          <Badge variant="default" className="mt-2">
-            دستیار عامل‌محور زیرساخت
-          </Badge>
-          <CardTitle className="mt-2 text-xl sm:text-2xl">
-            از وضعیت واقعی حساب تا اقدام امن
+    <div className="relative flex flex-1 items-start justify-start py-4 sm:items-center sm:justify-center sm:py-10">
+      <div className="pointer-events-none absolute inset-x-[8%] top-[8%] h-52 rounded-full bg-primary/10 blur-3xl" />
+      <Card className="liara-gradient-surface w-full max-w-3xl bg-card/88">
+        <div className="liara-grid pointer-events-none absolute inset-0 opacity-70" />
+        <CardHeader className="relative items-center px-5 pt-8 text-center sm:px-10 sm:pt-11">
+          <div className="relative mb-2">
+            <span className="absolute inset-0 animate-orbit rounded-full border border-dashed border-primary/25" />
+            <span className="relative m-2 grid size-14 place-items-center rounded-2xl border border-primary/30 bg-primary/10 text-primary shadow-[0_0_36px_-12px_var(--brand-cyan)] backdrop-blur-xl">
+              <WandSparklesIcon className="size-6" />
+            </span>
+          </div>
+          <Badge variant="default">همکار هوشمند زیرساخت لیارا</Badge>
+          <CardTitle className="mt-2 max-w-xl text-2xl leading-[1.55] sm:text-4xl">
+            زیرساختت را بفهم، عیب‌یابی کن و با خیال راحت
+            <span className="liara-gradient-text ms-2 inline-block">تغییر بده</span>
           </CardTitle>
-          <CardDescription className="max-w-lg text-[0.8125rem] leading-6">
-            سؤال فنی بپرسید؛ دستیار مستندات رسمی و منابع حساب را بررسی می‌کند و
-            پیش از هر تغییر از شما تأیید می‌گیرد.
+          <CardDescription className="mt-1 max-w-xl text-[0.8125rem] leading-7 sm:text-sm">
+            کوپایلت شواهد مستندات و وضعیت زندهٔ حساب را ترکیب می‌کند، مسیر کار را
+            قدم‌به‌قدم نشان می‌دهد و هیچ تغییری را بدون تأیید تو اجرا نمی‌کند.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-2 px-5 sm:grid-cols-2 sm:px-8">
+
+        <CardContent className="relative flex flex-col gap-5 px-4 sm:px-8">
+          <div className="flex flex-wrap items-center justify-center gap-2" aria-label="دسترسی سریع به منابع">
+            {RESOURCE_PROMPTS.map((resource) => {
+              const Icon = resource.icon;
+              return (
+                <Button
+                  key={resource.label}
+                  type="button"
+                  variant="subtle"
+                  size="sm"
+                  disabled={disabled}
+                  onClick={() => onPrompt(resource.prompt)}
+                  className="rounded-full"
+                >
+                  <Icon data-icon="inline-start" />
+                  {resource.label}
+                </Button>
+              );
+            })}
+          </div>
+
+          <div className="grid gap-2.5 sm:grid-cols-2">
           {HERO_PROMPTS.map((prompt) => {
             const Icon = prompt.icon;
             return (
@@ -1093,29 +1397,172 @@ function EmptyChat({
                 key={prompt.id}
                 type="button"
                 variant="outline"
-                size="lg"
                 disabled={disabled}
                 onClick={() => onPrompt(prompt.label)}
-                className="h-auto justify-start py-3 text-start whitespace-normal"
+                className="group h-auto min-h-24 items-start justify-start rounded-2xl px-4 py-3.5 text-start whitespace-normal"
               >
-                <Icon data-icon="inline-start" />
-                {prompt.label}
+                <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/8 text-primary transition-transform duration-300 group-hover:scale-105">
+                  <Icon className="size-4.5" />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+                  <span className="text-primary text-[0.625rem] font-bold tracking-wide">
+                    {prompt.eyebrow}
+                  </span>
+                  <span className="text-foreground text-xs leading-6 font-semibold sm:text-[0.8125rem]">
+                    {prompt.label}
+                  </span>
+                  <span className="text-muted-foreground text-[0.625rem] leading-5 font-normal">
+                    {prompt.detail}
+                  </span>
+                </span>
+                <ArrowLeftIcon className="mt-1 shrink-0 text-muted-foreground transition-transform duration-300 group-hover:-translate-x-1 group-hover:text-primary" />
               </Button>
             );
           })}
+          </div>
         </CardContent>
-        <CardFooter className="justify-center text-center">
-          <p className="text-muted-foreground text-[0.6875rem] leading-5">
-            داده‌های حساس و مقادیر env در رابط نمایش داده نمی‌شوند.
-          </p>
+
+        <CardFooter className="relative flex-wrap justify-center gap-x-5 gap-y-2 bg-muted/20 text-center">
+          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-[0.6875rem] leading-5">
+            <RouteIcon className="size-3.5 text-primary" />
+            مسیریابی خودکار و کم‌هزینه
+          </span>
+          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-[0.6875rem] leading-5">
+            <ShieldCheckIcon className="size-3.5 text-success" />
+            اطلاعات حساس همیشه پوشیده می‌مانند
+          </span>
         </CardFooter>
       </Card>
     </div>
   );
 }
 
+type ChatRunStatus = "submitted" | "streaming" | "ready" | "error";
+
+function shortModelName(model?: string): string {
+  if (!model) return "انتخاب خودکار";
+  if (model.includes("luna")) return "GPT-5.6 Luna";
+  if (model.includes("gemini")) return "Gemini 3.7 Flash";
+  if (model.includes("deepseek")) return "DeepSeek V4 Flash 0423";
+  return model.split("/").at(-1) ?? model;
+}
+
+function WorkspaceRail({
+  status,
+  pendingApproval,
+  activeTool,
+  model,
+  hasConversation,
+  onPrompt,
+}: {
+  status: ChatRunStatus;
+  pendingApproval: boolean;
+  activeTool?: string;
+  model?: string;
+  hasConversation: boolean;
+  onPrompt: (prompt: string) => void;
+}) {
+  const working = status === "submitted" || status === "streaming";
+  const stages = [
+    {
+      label: "انتخاب مسیر کم‌هزینه",
+      detail: status === "ready" ? "آماده برای سؤال بعدی" : shortModelName(model),
+      state: status === "submitted" ? "running" : working || pendingApproval || hasConversation ? "done" : "idle",
+    },
+    {
+      label: activeTool ? TOOL_LABELS[activeTool] ?? "بررسی شواهد" : "بررسی شواهد مرتبط",
+      detail: activeTool ? "فقط دادهٔ لازم دریافت می‌شود" : "مستندات و وضعیت حساب",
+      state: status === "streaming" ? "running" : pendingApproval || (hasConversation && Boolean(activeTool)) ? "done" : "idle",
+    },
+    {
+      label: pendingApproval ? "منتظر تصمیم شما" : "ساخت پاسخ قابل اقدام",
+      detail: pendingApproval ? "هیچ تغییری هنوز اجرا نشده" : "همراه با منبع و هزینهٔ واقعی",
+      state: pendingApproval ? "running" : status === "streaming" ? "running" : hasConversation && status === "ready" ? "done" : "idle",
+    },
+  ] as const;
+
+  return (
+    <aside className="hidden w-72 shrink-0 flex-col border-e border-border/55 bg-surface/45 px-4 py-5 backdrop-blur-xl xl:flex">
+      <div className="flex flex-col gap-5">
+        <section className="rounded-2xl border border-border/70 bg-card/55 p-4 shadow-[var(--panel-shadow)]">
+          <div className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+              <ActivityIcon className="size-4" />
+            </span>
+            <div>
+              <h2 className="text-xs font-bold">مسیر اجرای کوپایلت</h2>
+              <p className="text-muted-foreground mt-0.5 text-[0.625rem]">
+                همیشه می‌دانی چه چیزی در حال بررسی است
+              </p>
+            </div>
+          </div>
+
+          <ol className="mt-4 flex flex-col gap-0">
+            {stages.map((stage, index) => (
+              <li key={stage.label} className="relative flex gap-3 pb-4 last:pb-0">
+                {index < stages.length - 1 ? (
+                  <span className="absolute start-[0.34375rem] top-4 h-[calc(100%-0.5rem)] w-px bg-border" />
+                ) : null}
+                <span
+                  className={cn(
+                    "relative mt-1 size-3 shrink-0 rounded-full border-2 border-surface",
+                    stage.state === "running" && "animate-breathe bg-primary",
+                    stage.state === "done" && "bg-success",
+                    stage.state === "idle" && "bg-muted-foreground/35",
+                  )}
+                />
+                <div className="min-w-0">
+                  <p className={cn("text-[0.6875rem] font-semibold", stage.state === "running" && "text-primary")}>{stage.label}</p>
+                  <p className="text-muted-foreground mt-0.5 text-[0.625rem] leading-5">{stage.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <nav aria-label="منابع لیارا" className="flex flex-col gap-2">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-muted-foreground text-[0.6875rem] font-bold">منابع سریع</h2>
+            <span className="text-muted-foreground/60 text-[0.5625rem]">فقط خواندنی</span>
+          </div>
+          {RESOURCE_PROMPTS.map((resource) => {
+            const Icon = resource.icon;
+            return (
+              <Button
+                key={resource.label}
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onPrompt(resource.prompt)}
+                className="justify-start rounded-xl"
+              >
+                <Icon data-icon="inline-start" />
+                {resource.label}
+                <ArrowLeftIcon data-icon="inline-end" className="ms-auto opacity-45" />
+              </Button>
+            );
+          })}
+        </nav>
+      </div>
+
+      <div className="mt-auto rounded-2xl border border-primary/20 bg-primary/[0.055] p-3.5">
+        <div className="flex items-center gap-2 text-primary">
+          <ShieldCheckIcon className="size-4" />
+          <p className="text-[0.6875rem] font-bold">حالت امن همیشه روشن است</p>
+        </div>
+        <p className="text-muted-foreground mt-1.5 text-[0.625rem] leading-5">
+          مشاهده‌ها خودکارند؛ هر عملیات نوشتنی فقط بعد از نمایش تغییر و تأیید تو اجرا می‌شود.
+        </p>
+      </div>
+    </aside>
+  );
+}
+
 function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
-  const endRef = React.useRef<HTMLDivElement | null>(null);
+  const scrollRef = React.useRef<HTMLDivElement | null>(null);
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
+  const pinnedToBottomRef = React.useRef(true);
+  const [showLatestButton, setShowLatestButton] = React.useState(false);
   const [approvalBusy, setApprovalBusy] = React.useState<string | null>(null);
   const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
 
@@ -1154,22 +1601,75 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
   const showPendingAssistant =
     status === "submitted" && lastMessage?.role !== "assistant";
   const totals = React.useMemo(() => sessionTotals(messages), [messages]);
+  const latestUsage = React.useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const usage = messageUsage(messages[index].metadata).usage;
+      if (usage) return usage;
+    }
+    return undefined;
+  }, [messages]);
+  const activeTool = React.useMemo(() => {
+    const latestAssistant = [...messages]
+      .reverse()
+      .find((message) => message.role === "assistant");
+    if (!latestAssistant) return undefined;
+    const latestPart = latestAssistant.parts.filter(isToolUIPart).at(-1);
+    return latestPart ? toolName(latestPart as LooseToolPart) : undefined;
+  }, [messages]);
 
   React.useEffect(() => {
     scheduleChatHistorySave(messages);
   }, [messages]);
 
-  React.useEffect(() => {
-    endRef.current?.scrollIntoView({
-      behavior: status === "streaming" ? "auto" : "smooth",
-      block: "end",
+  const scrollToLatest = React.useCallback((behavior: ScrollBehavior = "smooth") => {
+    const viewport = scrollRef.current;
+    if (!viewport) return;
+    pinnedToBottomRef.current = true;
+    setShowLatestButton(false);
+    viewport.scrollTo({ top: viewport.scrollHeight, behavior });
+  }, []);
+
+  const trackScrollPosition = React.useCallback(() => {
+    const viewport = scrollRef.current;
+    if (!viewport) return;
+    const distanceFromBottom =
+      viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    const pinned = distanceFromBottom < 88;
+    pinnedToBottomRef.current = pinned;
+    setShowLatestButton(!pinned);
+  }, []);
+
+  React.useLayoutEffect(() => {
+    const viewport = scrollRef.current;
+    if (!viewport) return;
+    if (messages.length === 0 && !error) {
+      viewport.scrollTop = 0;
+      return;
+    }
+    if (!pinnedToBottomRef.current) return;
+    const frame = requestAnimationFrame(() => {
+      viewport.scrollTop = viewport.scrollHeight;
     });
-  }, [messages, status]);
+    return () => cancelAnimationFrame(frame);
+  }, [error, messages, status]);
+
+  React.useEffect(() => {
+    const content = contentRef.current;
+    const viewport = scrollRef.current;
+    if (messages.length === 0 || !content || !viewport || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (pinnedToBottomRef.current) viewport.scrollTop = viewport.scrollHeight;
+    });
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [messages.length]);
 
   const send = React.useCallback(
     (text: string) => {
       if (busy) return;
       clearError();
+      pinnedToBottomRef.current = true;
+      setShowLatestButton(false);
       void sendMessage({ text });
     },
     [busy, clearError, sendMessage],
@@ -1228,38 +1728,53 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
     ready: { label: "آماده", variant: "success" as const },
     error: { label: "نیاز به تلاش مجدد", variant: "destructive" as const },
   }[status];
+  const StatusIcon = busy
+    ? LoaderCircleIcon
+    : status === "error"
+      ? CircleXIcon
+      : CheckCircle2Icon;
 
   return (
-    <div className="flex h-dvh min-h-0 flex-1 flex-col bg-background">
-      <header className="border-border/70 bg-background/90 shrink-0 border-b backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4 sm:px-6">
-          <span className="border-primary/25 bg-primary/10 text-primary grid size-8 place-items-center rounded-lg border">
-            <SparklesIcon className="size-4" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="truncate text-sm font-semibold tracking-tight">
-              Liara Copilot
-            </h1>
-            <p className="text-muted-foreground text-[0.625rem]">
-              دستیار هوشمند زیرساخت
-            </p>
+    <div className="relative flex h-svh min-h-0 flex-1 flex-col overflow-hidden bg-background">
+      <div aria-hidden className="liara-grid pointer-events-none absolute inset-0 opacity-40" />
+      <header className="relative shrink-0 border-b border-border/55 bg-background/72 backdrop-blur-2xl">
+        <div className="flex h-16 w-full items-center gap-2.5 px-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Image
+              src="/liara-logo.svg"
+              alt="لیارا"
+              width={101}
+              height={45}
+              priority
+              className="h-8 w-auto sm:h-9"
+            />
+            <span className="h-6 w-px bg-border" aria-hidden />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h1 className="truncate text-xs font-bold tracking-tight sm:text-sm">کوپایلت</h1>
+                <Badge variant="outline" size="sm" className="hidden sm:inline-flex">V1</Badge>
+              </div>
+              <p className="text-muted-foreground hidden text-[0.625rem] sm:block">کنسول هوشمند زیرساخت</p>
+            </div>
           </div>
           <span className="flex-1" />
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             disabled={messages.length === 0 || busy || Boolean(pendingApproval)}
             onClick={() => setClearDialogOpen(true)}
             aria-label="پاک‌کردن تاریخچهٔ گفتگو"
-            className="text-muted-foreground"
           >
-            <Trash2Icon data-icon="inline-start" />
-            <span className="hidden sm:inline">پاک‌کردن گفتگو</span>
+            <Trash2Icon />
           </Button>
-          <Badge variant={statusMeta.variant} aria-live="polite">
-            {busy ? <LoaderCircleIcon className="animate-spin" /> : null}
-            {statusMeta.label}
+          <Badge variant={statusMeta.variant} role="status" aria-live="polite" aria-atomic="true">
+            <StatusIcon
+              data-icon="inline-start"
+              className={busy ? "animate-spin" : undefined}
+              aria-hidden
+            />
+            <span className="sr-only sm:not-sr-only">{statusMeta.label}</span>
           </Badge>
           <AccountConnection
             disabled={busy || Boolean(pendingApproval) || pendingQuestion}
@@ -1269,121 +1784,138 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
         </div>
       </header>
 
-      <main className="min-h-0 flex-1">
-        <ScrollArea className="size-full">
-          <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col px-4 py-5 sm:px-6 sm:py-7">
-            {messages.length === 0 && !error ? (
-              <EmptyChat disabled={busy} onPrompt={send} />
-            ) : (
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        <WorkspaceRail
+          status={status as ChatRunStatus}
+          pendingApproval={Boolean(pendingApproval)}
+          activeTool={activeTool}
+          model={busy ? undefined : latestUsage?.model}
+          hasConversation={messages.length > 0}
+          onPrompt={send}
+        />
+
+        <main className="flex min-w-0 flex-1 flex-col">
+          <section className="relative min-h-0 flex-1">
+            <div
+              ref={scrollRef}
+              onScroll={trackScrollPosition}
+              className="chat-scroll scrollbar-slim size-full overflow-y-auto"
+              role="region"
+              aria-label="گفتگو با کوپایلت"
+            >
               <div
-                className="flex flex-col gap-6"
-                aria-live="polite"
-                aria-relevant="additions text"
+                ref={contentRef}
+                className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-3 py-5 sm:px-6 sm:py-8 lg:px-10"
+                aria-busy={busy}
               >
-                {messages.map((message, messageIndex) => {
-                  if (message.role === "system") return null;
-                  const text = messageText(message);
-                  const metadata = messageUsage(message.metadata);
-                  const isLast = messageIndex === messages.length - 1;
-                  const toolParts = message.parts.filter(isToolUIPart);
-                  const looseToolParts = toolParts as LooseToolPart[];
+                {messages.length === 0 && !error ? (
+                  <EmptyChat disabled={busy} onPrompt={send} />
+                ) : (
+                  <div className="flex flex-col gap-7">
+                    {messages.map((message, messageIndex) => {
+                      if (message.role === "system") return null;
+                      const text = messageText(message);
+                      const metadata = messageUsage(message.metadata);
+                      const isLast = messageIndex === messages.length - 1;
+                      const toolParts = message.parts.filter(isToolUIPart);
+                      const looseToolParts = toolParts as LooseToolPart[];
 
-                  return (
-                    <MessageBubble
-                      key={message.id}
-                      role={message.role}
-                      content={text}
-                      streaming={
-                        message.role === "assistant" &&
-                        isLast &&
-                        status === "streaming"
-                      }
-                      usage={message.role === "assistant" ? metadata.usage : undefined}
-                      baselineToman={
-                        message.role === "assistant"
-                          ? metadata.baselineToman
-                          : undefined
-                      }
-                    >
-                      {message.role === "assistant" && looseToolParts.length > 1 ? (
-                        <AgentChecklist
-                          steps={checklistSteps(looseToolParts)}
-                          title="روند بررسی"
-                          loading={isLast && busy}
-                          dense
-                        />
-                      ) : null}
-                      {message.role === "assistant" && toolParts.length > 0
-                        ? looseToolParts.map((loose) => {
-                            return (
-                              <ToolPart
-                                key={loose.toolCallId}
-                                part={loose}
-                                busy={busy}
-                                onAskAnswer={answerQuestion}
-                              />
-                            );
-                          })
-                        : null}
-                    </MessageBubble>
-                  );
-                })}
+                      return (
+                        <MessageBubble
+                          key={message.id}
+                          role={message.role}
+                          content={text}
+                          streaming={message.role === "assistant" && isLast && status === "streaming"}
+                          usage={message.role === "assistant" ? metadata.usage : undefined}
+                          baselineToman={message.role === "assistant" ? metadata.baselineToman : undefined}
+                        >
+                          {message.role === "assistant" && looseToolParts.length > 0 ? (
+                            <AgentChecklist
+                              steps={checklistSteps(looseToolParts)}
+                              title="گزارش اجرای عامل"
+                              loading={isLast && busy}
+                              dense
+                            />
+                          ) : null}
+                          {message.role === "assistant" && toolParts.length > 0
+                            ? looseToolParts.map((loose) => (
+                                <ToolPart
+                                  key={loose.toolCallId}
+                                  part={loose}
+                                  busy={busy}
+                                  onAskAnswer={answerQuestion}
+                                  onFollowUp={send}
+                                />
+                              ))
+                            : null}
+                        </MessageBubble>
+                      );
+                    })}
 
-                {showPendingAssistant ? (
-                  <MessageBubble role="assistant" content="" pending />
-                ) : null}
+                    {showPendingAssistant ? <MessageBubble role="assistant" content="" pending /> : null}
 
-                {error ? (
-                  <MessageBubble
-                    role="assistant"
-                    content=""
-                    error="ارتباط با دستیار کامل نشد. اتصال و تنظیمات سرور را بررسی کنید."
-                    onRetry={() => {
-                      clearError();
-                      void retry();
-                    }}
-                  />
-                ) : null}
+                    {error ? (
+                      <MessageBubble
+                        role="assistant"
+                        content=""
+                        error="ارتباط با دستیار کامل نشد. اتصال و تنظیمات سرور را بررسی کنید."
+                        onRetry={() => {
+                          clearError();
+                          void retry();
+                        }}
+                      />
+                    ) : null}
 
-                <div ref={endRef} className="h-px" aria-hidden />
-
-                {totals.messages > 0 ? (
-                  <SessionCostFooter
-                    messages={totals.messages}
-                    totalToman={totals.totalToman}
-                    baselineToman={totals.baselineToman}
-                    totalPromptTokens={totals.totalPromptTokens}
-                    totalCompletionTokens={totals.totalCompletionTokens}
-                    cachedTokens={totals.cachedTokens}
-                    toolCalls={totals.toolCalls}
-                    breakdown={totals.breakdown}
-                  />
-                ) : null}
+                    {totals.messages > 0 ? (
+                      <SessionCostFooter
+                        messages={totals.messages}
+                        totalToman={totals.totalToman}
+                        baselineToman={totals.baselineAvailable ? totals.baselineToman : undefined}
+                        totalPromptTokens={totals.totalPromptTokens}
+                        totalCompletionTokens={totals.totalCompletionTokens}
+                        cachedTokens={totals.cachedTokens}
+                        toolCalls={totals.toolCalls}
+                        breakdown={totals.breakdown}
+                        costComplete={totals.costComplete}
+                      />
+                    ) : null}
+                    <div className="h-1" aria-hidden />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </ScrollArea>
-      </main>
+            </div>
 
-      <footer className="border-border/70 bg-background/95 shrink-0 border-t backdrop-blur">
-        <div className="mx-auto w-full max-w-4xl px-4 py-3 sm:px-6">
-          <ChatComposer
-            onSend={send}
-            streaming={busy}
-            onStop={() => void stop()}
-            disabled={Boolean(pendingApproval) || pendingQuestion}
-            placeholder={
-              pendingApproval || pendingQuestion
-                ? "ابتدا تصمیم بالا را مشخص کنید…"
-                : undefined
-            }
-          />
-          <p className="text-muted-foreground mt-1.5 text-center text-[0.625rem] leading-5">
-            پاسخ‌ها ممکن است خطا داشته باشند؛ هر تغییر زیرساختی پیش از اجرا به
-            تأیید شما نیاز دارد.
-          </p>
-        </div>
-      </footer>
+            {showLatestButton ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => scrollToLatest("smooth")}
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full shadow-lg motion-safe:hover:-translate-x-1/2"
+              >
+                <ArrowDownIcon data-icon="inline-start" />
+                جدیدترین پاسخ
+              </Button>
+            ) : null}
+          </section>
+
+          <footer className="relative shrink-0 border-t border-border/55 bg-background/78 backdrop-blur-2xl">
+            <div className="pointer-events-none absolute inset-x-0 -top-10 h-10 bg-gradient-to-t from-background/70 to-transparent" />
+            <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-6 lg:px-10">
+              <ChatComposer
+                onSend={send}
+                streaming={busy}
+                onStop={() => void stop()}
+                disabled={Boolean(pendingApproval) || pendingQuestion}
+                placeholder={pendingApproval || pendingQuestion ? "ابتدا تصمیم بالا را مشخص کنید…" : undefined}
+              />
+              <p className="text-muted-foreground mt-1.5 text-center text-[0.625rem] leading-5">
+                هر تغییر زیرساختی پیش از اجرا به تأیید تو نیاز دارد.
+              </p>
+            </div>
+          </footer>
+        </main>
+      </div>
 
       {pendingApproval && approval ? (
         <ConfirmationDialog
@@ -1439,34 +1971,31 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
 function ChatHistoryLoading() {
   return (
     <div
-      className="flex h-dvh min-h-0 flex-1 flex-col bg-background"
+      className="relative flex h-svh min-h-0 flex-1 flex-col overflow-hidden bg-background"
       aria-busy="true"
       aria-label="در حال بارگذاری تاریخچهٔ گفتگو"
     >
-      <header className="border-border/70 bg-background/90 shrink-0 border-b backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4 sm:px-6">
-          <span className="border-primary/25 bg-primary/10 text-primary grid size-8 place-items-center rounded-lg border">
-            <SparklesIcon className="size-4" />
-          </span>
+      <div aria-hidden className="liara-grid pointer-events-none absolute inset-0 opacity-40" />
+      <header className="relative shrink-0 border-b border-border/55 bg-background/72 backdrop-blur-2xl">
+        <div className="flex h-16 w-full items-center gap-3 px-3 sm:px-5">
+          <Image src="/liara-logo.svg" alt="لیارا" width={101} height={45} priority className="h-8 w-auto" />
+          <span className="h-6 w-px bg-border" aria-hidden />
           <div className="min-w-0">
-            <h1 className="truncate text-sm font-semibold tracking-tight">
-              Liara Copilot
-            </h1>
-            <p className="text-muted-foreground text-[0.625rem]">
-              دستیار هوشمند زیرساخت
-            </p>
+            <h1 className="truncate text-sm font-bold tracking-tight">کوپایلت</h1>
+            <p className="text-muted-foreground text-[0.625rem]">کنسول هوشمند زیرساخت</p>
           </div>
           <span className="flex-1" />
           <Badge variant="info">
-            <LoaderCircleIcon className="animate-spin" />
+            <LoaderCircleIcon data-icon="inline-start" className="animate-spin" />
             در حال بازیابی
           </Badge>
           <ThemeToggle />
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4 px-4 py-7 sm:px-6">
-        <Skeleton className="h-24 w-4/5 self-end rounded-xl" />
-        <Skeleton className="h-40 w-11/12 rounded-xl" />
+      <main className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col gap-5 px-4 py-8 sm:px-8">
+        <Skeleton className="h-24 w-4/5 self-end rounded-2xl" />
+        <Skeleton className="h-48 w-11/12 rounded-2xl" />
+        <Skeleton className="h-28 w-3/4 rounded-2xl" />
       </main>
     </div>
   );

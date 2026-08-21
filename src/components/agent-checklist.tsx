@@ -134,7 +134,7 @@ function AgentChecklist({
       data-slot="agent-checklist"
       aria-busy={running || loading}
       className={cn(
-        "bg-card/70 rounded-lg border border-border/80 backdrop-blur-sm",
+        "relative overflow-hidden rounded-2xl border border-primary/20 bg-card/65 shadow-[var(--panel-shadow)] backdrop-blur-xl",
         className,
       )}
     >
@@ -167,11 +167,11 @@ function AgentChecklist({
         </div>
       </header>
 
-      <div className="bg-border/60 mx-4 h-0.5 overflow-hidden rounded-full">
+      <div className="mx-4 h-0.5 overflow-hidden rounded-full bg-border/60">
         <div
           className={cn(
             "h-full rounded-full transition-[width] duration-500 ease-out",
-            failed ? "bg-destructive" : "bg-primary",
+            failed ? "bg-destructive" : "bg-[image:var(--brand-gradient)]",
           )}
           style={{ width: `${progress}%` }}
         />
@@ -182,7 +182,7 @@ function AgentChecklist({
           اجرای برنامه متوقف شد: {error}
         </p>
       ) : loading && total === 0 ? (
-        <div className="space-y-3 px-4 py-4">
+        <div className="flex flex-col gap-3 px-4 py-4">
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex items-center gap-3">
               <Skeleton className="size-[22px] rounded-full" />
@@ -202,7 +202,7 @@ function AgentChecklist({
             return (
               <li
                 key={step.id}
-                className="animate-rise flex gap-3"
+                className={cn("animate-rise flex gap-3 rounded-xl transition-colors", isActive && "bg-primary/[0.045]")}
                 style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}
               >
                 <div className="flex flex-col items-center">

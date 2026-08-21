@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { formatPercent } from "@/components/format";
 import type { Provenance, Source } from "@/components/types";
 import { Mono } from "@/components/ui/ltr";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -107,7 +106,7 @@ function SourceCardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "bg-card relative overflow-hidden rounded-lg border border-border/80 ps-2.5",
+        "relative overflow-hidden rounded-2xl border border-border/75 bg-card/70 ps-2.5 shadow-[var(--panel-shadow)]",
         className,
       )}
     >
@@ -142,9 +141,9 @@ function SourceCard({
     <>
       <span
         aria-hidden
-        className={cn("absolute inset-y-0 start-0 w-[3px]", meta.rail)}
+        className={cn("absolute inset-y-0 start-0 w-[3px] opacity-85", meta.rail)}
       />
-      <div className="flex items-start gap-2 px-3 pt-2.5">
+      <div className="flex items-start gap-2 px-3.5 pt-3.5">
         {typeof index === "number" ? (
           <span
             dir="ltr"
@@ -156,14 +155,6 @@ function SourceCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <ProvenanceBadge kind={source.kind} />
-            {typeof source.score === "number" ? (
-              <span className="text-muted-foreground/70 text-[0.625rem]">
-                امتیاز بازیابی{" "}
-                <span dir="ltr" className="ltr-embed tabular-nums">
-                  {formatPercent(source.score * 100, 0)}
-                </span>
-              </span>
-            ) : null}
           </div>
           <h4 className="mt-1.5 text-[0.8125rem] leading-5 font-semibold tracking-tight">
             {source.title}
@@ -196,7 +187,7 @@ function SourceCard({
           className={cn(
             "text-muted-foreground mt-2 px-3 pb-3 text-xs leading-6",
             source.kind === "docs" &&
-              "border-border/60 bg-muted/25 mx-3 mt-2 rounded-md border px-2.5 py-2",
+              "mx-3 mt-2 rounded-xl border border-border/55 bg-muted/25 px-3 py-2.5",
           )}
         >
           {source.snippet}
@@ -208,7 +199,7 @@ function SourceCard({
   );
 
   const base = cn(
-    "bg-card relative block overflow-hidden rounded-lg border text-start transition-[border-color,box-shadow]",
+    "relative block overflow-hidden rounded-2xl border bg-card/65 text-start shadow-[var(--panel-shadow)] backdrop-blur-md transition-[border-color,box-shadow,transform] duration-300",
     source.kind === "inference" ? "border-dashed border-border" : "border-border/80",
     className,
   );
@@ -222,7 +213,7 @@ function SourceCard({
         rel="noreferrer noopener"
         className={cn(
           base,
-          "hover:border-provenance-docs/50 hover:shadow-sm focus-visible:ring-ring/40 outline-none focus-visible:ring-[3px]",
+          "hover:-translate-y-0.5 hover:border-provenance-docs/50 hover:shadow-lg focus-visible:ring-ring/40 outline-none focus-visible:ring-[3px]",
         )}
       >
         {inner}

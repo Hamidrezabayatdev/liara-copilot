@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const alertVariants = cva(
-  "relative grid w-full items-start gap-x-3 gap-y-1 rounded-lg border px-4 py-3 text-sm has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] [&>svg]:size-4 [&>svg]:translate-y-0.5",
+  "relative grid w-full items-start gap-x-3 gap-y-1 overflow-hidden rounded-xl border px-4 py-3.5 text-sm shadow-[inset_0_1px_color-mix(in_oklab,var(--foreground)_4%,transparent)] backdrop-blur-md has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] [&>svg]:size-4 [&>svg]:translate-y-0.5",
   {
     variants: {
       variant: {

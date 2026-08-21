@@ -139,7 +139,7 @@ function DiagnosticResult({
     return (
       <div
         className={cn(
-          "bg-card overflow-hidden rounded-lg border border-border/80",
+          "bg-card/70 overflow-hidden rounded-3xl border border-border/70 shadow-[var(--panel-shadow)] backdrop-blur-xl",
           className,
         )}
       >
@@ -158,7 +158,7 @@ function DiagnosticResult({
     return (
       <div
         className={cn(
-          "border-destructive/30 bg-destructive/8 rounded-lg border px-4 py-4",
+          "border-destructive/30 bg-destructive/8 rounded-2xl border px-4 py-4 shadow-[var(--panel-shadow)]",
           className,
         )}
       >
@@ -179,7 +179,7 @@ function DiagnosticResult({
     <section
       data-slot="diagnostic-result"
       className={cn(
-        "bg-card relative overflow-hidden rounded-lg border border-border/80 shadow-sm",
+        "liara-gradient-surface animate-rise bg-card/72 relative overflow-hidden rounded-3xl border border-border/70 shadow-[var(--panel-shadow)] backdrop-blur-xl",
         className,
       )}
     >
@@ -191,9 +191,11 @@ function DiagnosticResult({
         )}
       />
 
-      <header className="flex flex-wrap items-center gap-2 px-4 pt-3.5">
-        <span className="inline-flex items-center gap-1.5 text-[0.8125rem] font-semibold tracking-tight">
-          <StethoscopeIcon className="text-muted-foreground size-4" />
+      <header className="flex flex-wrap items-center gap-2 px-4 pt-4 sm:px-5 sm:pt-5">
+        <span className="inline-flex items-center gap-2 text-[0.8125rem] font-semibold tracking-tight">
+          <span className="grid size-8 place-items-center rounded-xl border border-primary/25 bg-primary/10 text-primary shadow-[0_10px_28px_-18px_var(--brand-cyan)]">
+            <StethoscopeIcon className="size-4" />
+          </span>
           نتیجهٔ عیب‌یابی
         </span>
         {appName ? (
@@ -216,7 +218,7 @@ function DiagnosticResult({
         <ConfidenceMeter confidence={confidence} />
       </header>
 
-      <div className="space-y-3 px-4 pt-3">
+      <div className="space-y-3 px-4 pt-4 sm:px-5">
         <div>
           <span className="text-muted-foreground inline-flex items-center gap-1.5 text-[0.625rem] font-medium">
             <ActivityIcon className="size-3" />
@@ -225,7 +227,8 @@ function DiagnosticResult({
           <p className="text-foreground/85 mt-1 text-xs leading-6">{symptom}</p>
         </div>
 
-        <div className="border-primary/30 bg-primary/[0.07] relative rounded-lg border p-3">
+        <div className="border-primary/30 bg-primary/[0.07] relative overflow-hidden rounded-2xl border p-3.5">
+          <span aria-hidden className="absolute inset-y-0 start-0 w-[3px] bg-[image:var(--brand-gradient)]" />
           <span className="text-primary inline-flex items-center gap-1.5 text-[0.625rem] font-semibold">
             <CrosshairIcon className="size-3" />
             علت اصلی
@@ -244,7 +247,7 @@ function DiagnosticResult({
               {evidence.map((e, i) => (
                 <li
                   key={e.id}
-                  className="border-border/60 bg-muted/25 flex items-start gap-2 rounded-md border px-2.5 py-2"
+                  className="border-border/60 bg-muted/25 flex items-start gap-2 rounded-xl border px-3 py-2.5 transition-colors hover:border-primary/25 hover:bg-muted/35"
                 >
                   <span
                     dir="ltr"
@@ -277,13 +280,13 @@ function DiagnosticResult({
             </ol>
           </div>
         ) : (
-          <p className="text-muted-foreground border-border/70 rounded-md border border-dashed px-3 py-2.5 text-xs leading-6">
+          <p className="text-muted-foreground border-border/70 rounded-xl border border-dashed px-3 py-2.5 text-xs leading-6">
             شاهد قابل استنادی جمع نشد — این نتیجه فقط یک فرضیه است و باید بررسی
             بیشتری انجام شود.
           </p>
         )}
 
-        <div className="border-success/30 bg-success/[0.07] rounded-lg border p-3">
+        <div className="border-success/30 bg-success/[0.07] rounded-2xl border p-3.5">
           <span className="text-success inline-flex items-center gap-1.5 text-[0.625rem] font-semibold">
             <WrenchIcon className="size-3" />
             اصلاح پیشنهادی
@@ -312,7 +315,7 @@ function DiagnosticResult({
         </div>
       </div>
 
-      <div className="border-border/70 bg-muted/25 mt-3.5 flex flex-wrap items-center gap-2 border-t px-3 py-2.5">
+      <div className="border-border/70 bg-muted/20 mt-4 flex flex-wrap items-center gap-2 border-t px-4 py-3 sm:px-5">
         {onEscalate ? (
           <Button variant="ghost" size="xs" onClick={onEscalate}>
             <LifeBuoyIcon />

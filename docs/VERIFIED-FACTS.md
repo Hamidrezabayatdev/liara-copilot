@@ -55,17 +55,24 @@ databases: small-g2 486.11 │ medium-g2 833.33 │ ir-small 972.22 │ standard
 ### مدل‌های انتخابی — همه در پلن تأیید شدند
 | نقش | model id | ورودی $/M | خروجی $/M |
 |---|---|---|---|
-| router + answer | `google/gemini-3.7-flash` | 0.375 | 1.875 |
-| reasoning | `anthropic/claude-sonnet-5` | 2.00 | 10.00 |
+| router | `deepseek/deepseek-v4-flash` | 0.0826 | 0.1652 |
+| answer | `openai/gpt-5.6-luna` | 0.20 | 1.20 |
+| reasoning | `google/gemini-3.7-flash` | 0.375 | 1.875 |
 | baseline مقایسه | `anthropic/claude-opus-5` | 5.00 | 25.00 |
 | embedding | `intfloat/multilingual-e5-large` | — | — |
 
-`gemini-3.7-flash`: context **1,048,576**، max completion 65,536، `input_cache_read` ۱۰ برابر
-ارزان‌تر از prompt عادی ⇒ **prompt caching فعال است و باید از آن استفاده شود**.
+`deepseek-v4-flash`: context **1,048,576** و max completion 384,000.
+`gpt-5.6-luna`: context **1,050,000** و max completion 128,000.
+`gemini-3.7-flash`: context **1,048,576**، max completion 65,536 و
+`input_cache_read` ده برابر ارزان‌تر از prompt عادی.
 
-`supported_parameters` تأییدشده: `tools`, `tool_choice`, `response_format`,
-`structured_outputs`, `temperature`, `top_p`, `seed`, `stop`, `max_tokens`,
-`reasoning`, `reasoning_effort`, `include_reasoning`.
+هر سه مدل فعال `tools`، `tool_choice`، `response_format`،
+`structured_outputs`، `max_tokens`، `reasoning`، `reasoning_effort` و
+`include_reasoning` را در کاتالوگ workspace اعلام می‌کنند.
+
+بودجهٔ runtime نیز زنده تأیید شد: DeepSeek router با `reasoning:none`، Luna با
+`none/low` و Gemini با `medium` همگی HTTP 200 و tool call معتبر برگرداندند.
+سقف خروجی برنامه به‌ترتیب 256 برای router و 1,600/2,400/4,096 برای Level 1/2/3 است.
 
 ### ⭐ هزینهٔ واقعی تومان از خود provider می‌آید
 `usage` در پاسخ chat completion این شکل است:
@@ -91,13 +98,15 @@ tool calling با prompt فارسی در اولین تست کار کرد: `finis
 
 | مدل | نقش | ورودی $/1M | خروجی $/1M | tools |
 |---|---|---|---|---|
-| `google/gemini-3.7-flash` | router + answer | 0.375 | 1.875 | ✅ |
-| `anthropic/claude-sonnet-5` | reasoning | 2.000 | 10.000 | ✅ |
+| `deepseek/deepseek-v4-flash` | router | 0.0826 | 0.1652 | ✅ |
+| `openai/gpt-5.6-luna` | answer | 0.200 | 1.200 | ✅ |
+| `google/gemini-3.7-flash` | reasoning | 0.375 | 1.875 | ✅ |
 | `anthropic/claude-opus-5` | baseline مقایسه | 5.000 | 25.000 | ✅ |
 | `intfloat/multilingual-e5-large` | embedding | 0.000 | 0.000 | — |
 
-**opus-5 دقیقاً ۱۳٫۳ برابر flash است** (هم ورودی هم خروجی) — این عدد پشتِ
-ادعای «چند درصد صرفه‌جویی» در فوتر است و محاسبه‌شده است، نه تخمینی.
+در مقایسه با Opus-5، ورودی router حدود **۶۰٫۵×**، ورودی answer **۲۵×** و
+ورودی reason **۱۳٫۳×** ارزان‌تر است. چون نسبت خروجی‌ها متفاوت است، فوتر درصد
+صرفه‌جویی را از tokenهای واقعی و قیمت زندهٔ کاتالوگ حساب می‌کند، نه یک نسبت ثابت.
 
 ### نرخ تبدیل USD→تومان را استخراج کنید، ثابت ننویسید
 از هر پاسخ واقعی: `fx = total_cost_toman / cost`. روی نمونهٔ مشاهده‌شده

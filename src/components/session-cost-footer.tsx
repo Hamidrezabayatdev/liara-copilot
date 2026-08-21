@@ -1,33 +1,30 @@
 "use client";
 
 import * as React from "react";
-import { PiggyBankIcon, SparklesIcon, TrendingDownIcon } from "lucide-react";
+import { CoinsIcon, PiggyBankIcon, SparklesIcon, TrendingDownIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatCompact, formatInt, formatToman } from "@/components/format";
 import { shortModel } from "@/components/cost-badge";
+import type { ModelUsageItem } from "@/components/types";
 import { Mono } from "@/components/ui/ltr";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-export type ModelUsageBreakdown = {
-  model: string;
-  /** Number of messages routed to this model. */
-  calls: number;
-  /** Real Toman spent on this model. */
-  toman: number;
-};
+export type ModelUsageBreakdown = ModelUsageItem;
 
 export type SessionCostFooterProps = {
   /** Messages answered in this session. */
   messages: number;
-  /** Real Toman spent, summed from each response's `total_cost_toman`. */
+  /** Toman reported by successful calls; a lower bound when costComplete=false. */
   totalToman: number;
+  /** False when at least one successful provider call omitted its Toman cost. */
+  costComplete?: boolean;
   /**
    * What the same session would have cost with every request sent to the most
    * expensive model — the honest counterfactual for the saving claim.
    */
-  baselineToman: number;
+  baselineToman?: number;
   baselineModel?: string;
   totalPromptTokens: number;
   totalCompletionTokens: number;
@@ -55,6 +52,7 @@ const MODEL_BAR_COLORS = [
 function SessionCostFooter({
   messages,
   totalToman,
+  costComplete = true,
   baselineToman,
   baselineModel = "anthropic/claude-opus-5",
   totalPromptTokens,
@@ -69,7 +67,7 @@ function SessionCostFooter({
     return (
       <div
         className={cn(
-          "bg-card rounded-lg border border-border/80 px-4 py-4",
+          "rounded-2xl border border-border/75 bg-card/70 px-4 py-4 shadow-[var(--panel-shadow)]",
           className,
         )}
       >
@@ -84,95 +82,124 @@ function SessionCostFooter({
     );
   }
 
-  const savedToman = Math.max(0, baselineToman - totalToman);
-  const savedPercent = baselineToman > 0 ? (savedToman / baselineToman) * 100 : 0;
+  const hasBaseline =
+    costComplete && typeof baselineToman === "number" && baselineToman > 0;
+  const comparableBaseline = hasBaseline ? baselineToman : 0;
+  const savedToman = Math.max(0, comparableBaseline - totalToman);
+  const savedPercent = hasBaseline ? (savedToman / comparableBaseline) * 100 : 0;
   const actualShare =
-    baselineToman > 0 ? Math.max(2, (totalToman / baselineToman) * 100) : 100;
+    hasBaseline ? Math.max(2, (totalToman / comparableBaseline) * 100) : 100;
   const breakdownTotal = breakdown.reduce((a, b) => a + b.toman, 0);
 
   return (
     <section
       data-slot="session-cost-footer"
       className={cn(
-        "bg-card relative overflow-hidden rounded-lg border border-border/80 shadow-sm",
+        "relative overflow-hidden rounded-3xl border border-success/20 bg-card/68 shadow-[var(--panel-shadow)] backdrop-blur-xl",
         className,
       )}
     >
       <span
         aria-hidden
-        className="from-success/60 absolute inset-x-0 top-0 h-px bg-gradient-to-l to-transparent"
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-success/60 via-primary/45 to-transparent"
       />
 
       <div className="flex flex-col gap-5 px-4 py-4 lg:flex-row lg:items-stretch">
         {/* Hero: the saving */}
         <div className="lg:w-56 lg:shrink-0">
-          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-[0.6875rem] font-medium">
-            <PiggyBankIcon className="text-success size-3.5" />
-            صرفه‌جویی این نشست
-          </span>
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span
-              dir="ltr"
-              className="ltr-embed text-success font-mono text-4xl leading-none font-bold tracking-tight tabular-nums"
-            >
-              {Math.round(savedPercent)}
-            </span>
-            <span className="text-success text-xl leading-none font-bold">٪</span>
-            <TrendingDownIcon className="text-success/70 ms-1 size-4" />
-          </div>
-          <p className="text-muted-foreground mt-2 text-[0.6875rem] leading-5">
-            <span dir="ltr" className="ltr-embed text-foreground font-mono font-semibold tabular-nums">
-              {formatToman(savedToman)}
-            </span>{" "}
-            تومان کمتر از حالتی که همهٔ درخواست‌ها به{" "}
-            <Mono className="text-foreground/80">{shortModel(baselineModel)}</Mono>{" "}
-            می‌رفت.
-          </p>
+          {hasBaseline ? (
+            <>
+              <span className="text-muted-foreground inline-flex items-center gap-1.5 text-[0.6875rem] font-medium">
+                <PiggyBankIcon className="text-success size-3.5" />
+                صرفه‌جویی این نشست
+              </span>
+              <div className="mt-1 flex items-baseline gap-1.5">
+                <span
+                  dir="ltr"
+                  className="ltr-embed text-success font-mono text-4xl leading-none font-bold tracking-tight tabular-nums"
+                >
+                  {Math.round(savedPercent)}
+                </span>
+                <span className="text-success text-xl leading-none font-bold">٪</span>
+                <TrendingDownIcon className="text-success/70 ms-1 size-4" />
+              </div>
+              <p className="text-muted-foreground mt-2 text-[0.6875rem] leading-5">
+                <span dir="ltr" className="ltr-embed text-foreground font-mono font-semibold tabular-nums">
+                  {formatToman(savedToman)}
+                </span>{" "}
+                تومان کمتر از حالتی که همهٔ درخواست‌ها به{" "}
+                <Mono className="text-foreground/80">{shortModel(baselineModel)}</Mono>{" "}
+                می‌رفت.
+              </p>
+            </>
+          ) : (
+            <>
+              <span className="inline-flex items-center gap-1.5 text-[0.6875rem] font-medium text-muted-foreground">
+                <CoinsIcon className="size-3.5 text-primary" />
+                {costComplete ? "هزینهٔ واقعی این نشست" : "هزینهٔ ثبت‌شدهٔ این نشست"}
+              </span>
+              <div className="mt-1 flex items-baseline gap-1.5">
+                <span dir="ltr" className="ltr-embed font-mono text-3xl font-bold text-primary tabular-nums">
+                  {formatToman(totalToman)}
+                </span>
+                <span className="text-xs text-muted-foreground">تومان</span>
+              </div>
+              <p className="mt-2 text-[0.6875rem] leading-5 text-muted-foreground">
+                {costComplete
+                  ? "کاتالوگ مقایسه در دسترس نبود؛ درصد صرفه‌جویی حدس زده نمی‌شود."
+                  : "یک provider هزینهٔ Toman را برنگرداند؛ مبلغ بالا حداقل هزینه است و درصد صرفه‌جویی نمایش داده نمی‌شود."}
+              </p>
+            </>
+          )}
         </div>
 
         {/* Comparison bars */}
         <div className="border-border/60 min-w-0 flex-1 lg:border-s lg:ps-5">
           <div className="space-y-2.5">
-            <div>
-              <div className="mb-1 flex items-baseline gap-2 text-[0.6875rem]">
-                <span className="text-foreground font-medium">
-                  هزینهٔ واقعی این نشست
-                </span>
-                <span className="flex-1" />
-                <span
-                  dir="ltr"
-                  className="ltr-embed text-foreground font-mono font-semibold tabular-nums"
-                >
-                  {formatToman(totalToman)}
-                </span>
-                <span className="text-muted-foreground">تومان</span>
-              </div>
-              <div className="bg-muted h-2.5 overflow-hidden rounded-full">
-                <div
-                  className="bg-success h-full rounded-full transition-[width] duration-700 ease-out"
-                  style={{ width: `${Math.min(actualShare, 100)}%` }}
-                />
-              </div>
-            </div>
+            {hasBaseline ? (
+              <>
+                <div>
+                  <div className="mb-1 flex items-baseline gap-2 text-[0.6875rem]">
+                    <span className="text-foreground font-medium">
+                      هزینهٔ واقعی این نشست
+                    </span>
+                    <span className="flex-1" />
+                    <span
+                      dir="ltr"
+                      className="ltr-embed text-foreground font-mono font-semibold tabular-nums"
+                    >
+                      {formatToman(totalToman)}
+                    </span>
+                    <span className="text-muted-foreground">تومان</span>
+                  </div>
+                  <div className="bg-muted h-2.5 overflow-hidden rounded-full">
+                    <div
+                      className="bg-success h-full rounded-full transition-[width] duration-700 ease-out"
+                      style={{ width: `${Math.min(actualShare, 100)}%` }}
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <div className="mb-1 flex items-baseline gap-2 text-[0.6875rem]">
-                <span className="text-muted-foreground">
-                  اگر همیشه <Mono>{shortModel(baselineModel)}</Mono> استفاده می‌شد
-                </span>
-                <span className="flex-1" />
-                <span
-                  dir="ltr"
-                  className="ltr-embed text-muted-foreground font-mono tabular-nums"
-                >
-                  {formatToman(baselineToman)}
-                </span>
-                <span className="text-muted-foreground">تومان</span>
-              </div>
-              <div className="bg-muted h-2.5 overflow-hidden rounded-full">
-                <div className="bg-muted-foreground/35 h-full w-full rounded-full" />
-              </div>
-            </div>
+                <div>
+                  <div className="mb-1 flex items-baseline gap-2 text-[0.6875rem]">
+                    <span className="text-muted-foreground">
+                      اگر همیشه <Mono>{shortModel(baselineModel)}</Mono> استفاده می‌شد
+                    </span>
+                    <span className="flex-1" />
+                    <span
+                      dir="ltr"
+                      className="ltr-embed text-muted-foreground font-mono tabular-nums"
+                    >
+                      {formatToman(comparableBaseline)}
+                    </span>
+                    <span className="text-muted-foreground">تومان</span>
+                  </div>
+                  <div className="bg-muted h-2.5 overflow-hidden rounded-full">
+                    <div className="bg-muted-foreground/35 h-full w-full rounded-full" />
+                  </div>
+                </div>
+              </>
+            ) : null}
           </div>
 
           {breakdown.length > 0 ? (
@@ -194,7 +221,7 @@ function SessionCostFooter({
                       />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <Mono>{b.model}</Mono> — {formatInt(b.calls)} پیام،{" "}
+                      <Mono>{b.model}</Mono> — {formatInt(b.calls)} فراخوانی،{" "}
                       <span dir="ltr" className="ltr-embed tabular-nums">
                         {formatToman(b.toman)}
                       </span>{" "}
@@ -258,7 +285,7 @@ function SessionCostFooter({
         <p className="border-border/70 bg-muted/25 text-muted-foreground flex items-center gap-1.5 border-t px-4 py-2 text-[0.625rem] leading-5">
           <SparklesIcon className="text-success size-3 shrink-0" />
           <span>
-            بخشی از این صرفه‌جویی از prompt caching است:{" "}
+            {hasBaseline ? "بخشی از این صرفه‌جویی" : "بخشی از کاهش هزینهٔ ورودی"} از prompt caching است:{" "}
             <span
               dir="ltr"
               className="ltr-embed text-foreground font-mono font-semibold tabular-nums"

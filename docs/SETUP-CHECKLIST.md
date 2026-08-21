@@ -3,7 +3,7 @@ Setup checklist — parallel track for the owner. Everything else I do.
 
 ## 1. دسترسی API لیارا
 
-برای توسعهٔ محلی می‌توان یک token مشترک در `.env` گذاشت. در رابط V0 نیز دکمهٔ
+برای توسعهٔ محلی می‌توان یک token مشترک در `.env` گذاشت. در رابط V1 نیز دکمهٔ
 «اتصال حساب» وجود دارد که token کاربر را با یک read بی‌خطر اعتبارسنجی و در
 cookie رمزنگاری‌شدهٔ `httpOnly` نگه‌داری می‌کند. production به‌صورت پیش‌فرض
 token مشترک را قبول نمی‌کند.
@@ -23,7 +23,8 @@ token مشترک را قبول نمی‌کند.
 
 > پلن، دسترسی به مدل‌ها را محدود می‌کند. بعد از دریافت کلید، خودم با
 > `GET {LIARA_AI_BASE_URL}/models` بررسی می‌کنم که
-> `google/gemini-3.7-flash` و `anthropic/claude-sonnet-5` در پلن فعال باشند
+> `deepseek/deepseek-v4-flash`، `openai/gpt-5.6-luna` و
+> `google/gemini-3.7-flash` در پلن فعال باشند
 > و اگر نبودند، routing را روی نزدیک‌ترین مدل موجود تنظیم می‌کنم.
 
 ## 3. برنامه‌ی مقصد برای استقرار
