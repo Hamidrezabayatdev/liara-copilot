@@ -1,5 +1,11 @@
-# Liara Copilot — نقشه‌ی پیاده‌سازی
-Implementation plan. Derived from `liara-agentic-assistant-product-spec-v2-en.md` (descriptive) + verified recon. All of spec §24 is resolved below.
+# Liara Copilot — یادداشت‌های معماری (Architecture notes)
+
+> **Superseded as the plan.** This was the scaffold-time architecture note. The
+> live plan of record is **[`MASTER-PLAN.md`](./MASTER-PLAN.md)**, which carries
+> every decision from all seven interview rounds, the phase breakdown, and the
+> current state. This file is kept for the reasoning behind the early
+> architectural calls — it is history, and two of its base URLs are now known
+> wrong (see `VERIFIED-FACTS.md` §2 for the measured values).
 
 ## 0. Verified facts (measured, not assumed)
 
