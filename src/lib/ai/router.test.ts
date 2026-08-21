@@ -38,6 +38,8 @@ const CASES: Array<[string, 1 | 2 | 3, string]> = [
   ['قیمت دیسک چند است؟', 1, 'pricing frame must outrank the bare resource noun «دیسک»'],
   ['میشود دامنه اضافه کرد؟', 1, 'capability question, not a request to add one'],
   ['چطور اپ را ری‌استارت کنم؟', 1, 'how-to with an imperative substring'],
+  ['چرا باید از Object Storage استفاده کنم؟', 1, 'bare «چرا» asks for product rationale, not incident diagnosis'],
+  ['معماری شبکهٔ خصوصی لیارا چیست؟', 1, 'architecture definition without recommendation intent'],
 
   // ---- Level 2: needs the account's current state, but nothing is broken.
   ['لیست اپ‌های من را نشان بده', 2, 'account read'],
@@ -45,6 +47,8 @@ const CASES: Array<[string, 1 | 2 | 3, string]> = [
   ['متغیرهای محیطی digishop-api را بگو', 2, 'weak noun rescued by a resource name'],
   ['مصرف RAM اپم چقدر است؟', 2, 'metrics'],
   ['لاگ‌های digishop-front را ببین', 2, 'weak noun rescued by an activator'],
+  ['برای workload جدید معماری پیشنهاد بده', 2, 'architecture recommendation needs read-only resources and live plans'],
+  ['چه معماری برای workload من مناسب است؟', 2, 'workload recommendation phrased as a question'],
 
   // ---- Level 3: something is wrong, or the user wants a write.
   ['اپ digishop-api خطای 502 می‌دهد', 3, 'failure symptom; «خطا» must prefix-match «خطای»'],
@@ -54,6 +58,7 @@ const CASES: Array<[string, 1 | 2 | 3, string]> = [
   ['اپ را ری‌استارت کن', 3, 'bare imperative restart'],
   ['digishop-worker را اسکیل کن به ۲', 3, 'scale write, Persian digit'],
   ['اپم داون است', 3, 'terse failure, no interrogative'],
+  ['چرا اپم داون است؟', 3, 'a real failure still outranks the generic «چرا» frame'],
 ];
 
 for (const [message, want, note] of CASES) {

@@ -21,12 +21,13 @@
   --secondary: oklch(0.93 0.018 202);
   --secondary-foreground: oklch(0.27 0.026 205);
   --muted: oklch(0.94 0.009 205);
-  --muted-foreground: oklch(0.505 0.022 207);
+  --muted-foreground: oklch(0.44 0.022 207);
   --accent: oklch(0.927 0.036 174);
   --accent-foreground: oklch(0.255 0.047 194);
   --destructive: oklch(0.58 0.21 25);
   --destructive-foreground: oklch(0.985 0.006 25);
-  --success: oklch(0.57 0.142 155);
+  /* Dark enough for compact status text on the tinted success surface. */
+  --success: oklch(0.44 0.12 155);
   --success-foreground: oklch(0.99 0.01 155);
   --warning: oklch(0.68 0.145 72);
   --warning-foreground: oklch(0.225 0.04 70);
@@ -259,6 +260,11 @@
   text-underline-offset: 4px;
 }
 .liara-markdown :where(a:hover) { text-decoration-color: var(--primary); }
+.liara-markdown :where(a):focus-visible {
+  border-radius: 0.2rem;
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
 .liara-markdown :where(blockquote) {
   border-inline-start: 2px solid var(--primary);
   border-radius: 0.4rem;

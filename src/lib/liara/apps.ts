@@ -54,6 +54,60 @@ export function getApp(
   return liaraFetch<{ project: AppSummary }>('paas', 'GET', `/v1/projects/${name}`, { ctx });
 }
 
+type V2LogGroup = {
+  metaData?: { releaseId?: string };
+  values?: Array<[string, string]>;
+};
+
+/** Convert Liara's Loki-style grouped v2 payload into the stable public shape. */
+export function decodeV2LogGroups(raw: unknown): LogLine[] {
+  const groups = raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data)
+    ? (raw as { data: V2LogGroup[] }).data
+    : [];
+  const lines: LogLine[] = [];
+
+  for (const group of groups) {
+    for (const value of Array.isArray(group?.values) ? group.values : []) {
+      if (!Array.isArray(value) || value.length < 2) continue;
+      const [rawTimestamp, rawPayload] = value;
+      if (typeof rawTimestamp !== 'string' || typeof rawPayload !== 'string') continue;
+
+      let payload: { type?: unknown; _entry?: unknown };
+      try {
+        payload = JSON.parse(rawPayload) as { type?: unknown; _entry?: unknown };
+      } catch {
+        continue;
+      }
+      if (typeof payload._entry !== 'string') continue;
+
+      let datetime: string | undefined;
+      try {
+        // Loki timestamps are nanoseconds. Split seconds/milliseconds before
+        // converting so the full nanosecond integer never enters Number.
+        if (!/^\d{19}$/.test(rawTimestamp)) throw new TypeError('invalid log timestamp');
+        const seconds = Number(rawTimestamp.slice(0, 10));
+        const milliseconds = Number(rawTimestamp.slice(10, 13));
+        datetime = new Date(seconds * 1_000 + milliseconds).toISOString();
+      } catch {
+        datetime = undefined;
+      }
+
+      lines.push({
+        type: typeof payload.type === 'string' ? payload.type : undefined,
+        datetime,
+        message: payload._entry,
+      });
+    }
+  }
+
+  lines.sort((a, b) => {
+    if (!a.datetime) return b.datetime ? 1 : 0;
+    if (!b.datetime) return -1;
+    return a.datetime.localeCompare(b.datetime);
+  });
+  return lines;
+}
+
 /**
  * App logs. `since` is required by the API — a unix timestamp in seconds.
  * Defaults to the last hour, which is what you want when triaging a 502.
@@ -62,7 +116,7 @@ export function getAppLogs(
   ctx: LiaraCtx,
   name: string,
   opts?: { since?: number | string; sinceMinutes?: number },
-): Promise<ToolResult<LogLine[] | { data?: LogLine[] }>> {
+): Promise<ToolResult<LogLine[]>> {
   const bad = badName(name);
   if (bad) return Promise.resolve(fail(bad));
 
@@ -74,7 +128,13 @@ export function getAppLogs(
   if (!/^\d{1,12}$/.test(since)) {
     return Promise.resolve(fail(`invalid "since" ${JSON.stringify(since)} (unix seconds expected)`));
   }
-  return liaraFetch('paas', 'GET', `/v1/projects/${name}/logs`, { ctx, query: { since } });
+  return liaraFetch<{ data?: V2LogGroup[] }>('paas', 'GET', `/v2/projects/${name}/logs`, {
+    ctx,
+    query: { start: since, direction: 'forward', last_lines: 'false' },
+  }).then((result): ToolResult<LogLine[]> => {
+    if (!result.ok) return result;
+    return { ok: true, data: decodeV2LogGroups(result.data), source: 'account' };
+  });
 }
 
 export function getAppEvents(

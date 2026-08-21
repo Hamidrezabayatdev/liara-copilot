@@ -60,11 +60,13 @@ function accountError(status: number): string {
 type AccountConnectionProps = {
   disabled?: boolean;
   onConnectionChange?: () => void | Promise<void>;
+  onConnectionStatusChange?: (connected: boolean) => void;
 };
 
 function AccountConnection({
   disabled = false,
   onConnectionChange,
+  onConnectionStatusChange,
 }: AccountConnectionProps) {
   const [open, setOpen] = React.useState(false);
   const [status, setStatus] = React.useState<AccountStatus>(EMPTY_STATUS);
@@ -73,6 +75,7 @@ function AccountConnection({
   const [error, setError] = React.useState<string | null>(null);
   const [token, setToken] = React.useState("");
   const [teamId, setTeamId] = React.useState("");
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -82,7 +85,10 @@ function AccountConnection({
         return response.json() as Promise<AccountStatus>;
       })
       .then((next) => {
-        if (!cancelled) setStatus(next);
+        if (!cancelled) {
+          setStatus(next);
+          onConnectionStatusChange?.(next.connected);
+        }
       })
       .catch(() => {
         if (!cancelled) setError("وضعیت اتصال حساب دریافت نشد.");
@@ -93,7 +99,7 @@ function AccountConnection({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onConnectionStatusChange]);
 
   const changeOpen = (next: boolean) => {
     if (busy) return;
@@ -128,6 +134,7 @@ function AccountConnection({
         "connected" | "source" | "teamId"
       >;
       setStatus((current) => ({ ...current, ...next }));
+      onConnectionStatusChange?.(next.connected);
       setToken("");
       setTeamId("");
       await onConnectionChange?.();
@@ -155,6 +162,7 @@ function AccountConnection({
         "connected" | "source" | "teamId"
       >;
       setStatus((current) => ({ ...current, ...next }));
+      onConnectionStatusChange?.(next.connected);
       await onConnectionChange?.();
       broadcastAccountChange();
       setOpen(false);
@@ -176,6 +184,7 @@ function AccountConnection({
   return (
     <>
       <Button
+        ref={triggerRef}
         type="button"
         variant={status.connected ? "outline" : "default"}
         size="sm"
@@ -194,7 +203,12 @@ function AccountConnection({
       </Button>
 
       <Dialog open={open} onOpenChange={changeOpen}>
-        <DialogContent>
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            triggerRef.current?.focus();
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CloudIcon className="text-primary size-4" />

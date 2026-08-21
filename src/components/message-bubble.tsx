@@ -111,7 +111,7 @@ function MessageBubble({
         className={cn("animate-rise flex justify-end gap-2.5", className)}
       >
         <div className="max-w-[88%] rounded-xl rounded-se-sm border border-border/70 bg-muted/45 px-4 py-3 sm:max-w-[76%]">
-          <p className="text-[0.8125rem] leading-7 whitespace-pre-wrap text-foreground/95">{content}</p>
+          <p className="text-[0.8125rem] leading-7 whitespace-pre-wrap text-foreground/95 [overflow-wrap:anywhere]">{content}</p>
           {timestamp ? (
             <span dir="ltr" className="ltr-embed mt-1 block text-end text-[0.625rem] text-muted-foreground/70 tabular-nums">
               {formatClock(timestamp)}

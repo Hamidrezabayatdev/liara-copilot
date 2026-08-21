@@ -52,10 +52,36 @@ export type UsageCollector = {
   calls: CapturedCall[];
   /** In-flight observers for streamed usage. Await before presenting totals. */
   pending?: Promise<void>[];
+  /** Every provider attempt, including attempts rejected by the local circuit. */
+  attemptedCalls?: number;
+  /** Set when the per-request model-call circuit breaker opens. */
+  callBudgetExceeded?: boolean;
+  /** Set when generation fails after the SSE response has already started. */
+  streamFailed?: boolean;
+  /** Final agent facts attached by cost accounting for request telemetry. */
+  summary?: {
+    tier: Tier;
+    escalation: 1 | 2 | 3;
+    toolCalls: number;
+  };
 };
 
 export function createUsageCollector(): UsageCollector {
-  return { calls: [], pending: [] };
+  return { calls: [], pending: [], attemptedCalls: 0 };
+}
+
+export const DEFAULT_MODEL_CALL_BUDGET = 18;
+
+/**
+ * One request should never enter an unbounded agent/provider retry loop. The
+ * default still leaves room for all 12 Level-3 steps, routing, and failover.
+ */
+export function modelCallBudget(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): number {
+  const configured = Number(env.MAX_MODEL_CALLS_PER_REQUEST);
+  if (!Number.isFinite(configured)) return DEFAULT_MODEL_CALL_BUDGET;
+  return Math.max(4, Math.min(32, Math.floor(configured)));
 }
 
 function modelFromBody(body: unknown): string {
@@ -112,6 +138,13 @@ async function scanSseForUsage(
  */
 function instrumentedFetch(collector: UsageCollector): typeof globalThis.fetch {
   return async (input, init) => {
+    const attempted = (collector.attemptedCalls ?? 0) + 1;
+    collector.attemptedCalls = attempted;
+    if (attempted > modelCallBudget()) {
+      collector.callBudgetExceeded = true;
+      throw new Error('Per-request model call budget exhausted');
+    }
+
     const started = Date.now();
     const model = modelFromBody(init?.body);
     const res = await fetch(input as RequestInfo, init);

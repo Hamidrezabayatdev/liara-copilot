@@ -197,6 +197,12 @@ export async function summarize(
 
   const fallback = calls.find(c => c.viaFallback)?.viaFallback;
 
+  collector.summary = {
+    tier: opts.tier,
+    escalation: opts.escalation,
+    toolCalls: opts.toolCalls,
+  };
+
   return {
     model: billed.at(-1)?.model ?? calls.at(-1)?.model ?? 'unknown',
     tier: opts.tier,

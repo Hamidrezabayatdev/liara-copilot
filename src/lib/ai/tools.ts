@@ -181,6 +181,17 @@ const diagnosticResultSchema = z.object({
   confidence: z.number().min(0).max(1),
   severity: z.enum(['critical', 'degraded', 'healthy']),
   appName: appNameSchema.optional(),
+}).superRefine((diagnosis, ctx) => {
+  const hasObservedEvidence = diagnosis.evidence.some(
+    (item) => item.sourceKind === 'docs' || item.sourceKind === 'account',
+  );
+  if (!hasObservedEvidence && diagnosis.confidence > 0.55) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['confidence'],
+      message: 'inference-only diagnoses cannot claim confidence above 0.55',
+    });
+  }
 });
 
 /* ================================================================== *
@@ -308,13 +319,52 @@ export const TOOL_NAMES = [
 
 export type LiaraToolName = (typeof TOOL_NAMES)[number];
 
+type ToolFactoryOptions = { collector?: UsageCollector };
+
+function createSearchDocsTool(options?: ToolFactoryOptions) {
+  return trusted(
+    tool({
+      description: 'Search the bundled official Liara documentation. Use returned source URLs as citations.',
+      inputSchema: z.object({
+        query: z.string().min(2).max(500).describe('The user question or focused search phrase'),
+        limit: z.number().int().min(1).max(6).optional().describe('Maximum candidates; relevance cutoff returns up to 4'),
+      }),
+      execute: async ({ query, limit }) => {
+        const result = await searchDocsIndex(query, {
+          limit: limit ?? 5,
+          collector: options?.collector,
+        });
+        const topScore = result.hits[0]?.score ?? 0;
+        return {
+          ok: true as const,
+          data: {
+            sources: result.hits.map((hit) => docSource(hit, topScore)),
+            strategy: result.strategy,
+            keywordConfidence: result.keywordConfidence,
+          },
+          source: 'docs' as const,
+        };
+      },
+    }),
+    'read',
+    () => ({ scope: 'local', operation: 'searchDocs' }),
+  );
+}
+
+/** Public, credential-free tool registry. No account operation exists in it. */
+export function createDocsTools(options?: ToolFactoryOptions) {
+  return { searchDocs: createSearchDocsTool(options) } satisfies ToolSet;
+}
+
+export type DocsTools = ReturnType<typeof createDocsTools>;
+
 /**
  * Build one request/account-scoped registry. Do not cache this globally: doing
  * so could retain one user's token and use it for another user's request.
  */
 export function createLiaraTools(
   inputCtx: Readonly<LiaraCtx>,
-  options?: { collector?: UsageCollector },
+  options?: ToolFactoryOptions,
 ) {
   const token = typeof inputCtx?.token === 'string' ? inputCtx.token.trim() : '';
   if (!token) throw new TypeError('createLiaraTools requires a Liara server context');
@@ -326,33 +376,7 @@ export function createLiaraTools(
   const accountData = <T>(data: T) => accountResult(scrubValue(data, token) as T);
 
   const tools = {
-    searchDocs: trusted(
-      tool({
-        description: 'Search the bundled official Liara documentation. Use returned source URLs as citations.',
-        inputSchema: z.object({
-          query: z.string().min(2).max(500).describe('The user question or focused search phrase'),
-          limit: z.number().int().min(1).max(6).optional().describe('Maximum candidates; relevance cutoff returns up to 4'),
-        }),
-        execute: async ({ query, limit }) => {
-          const result = await searchDocsIndex(query, {
-            limit: limit ?? 5,
-            collector: options?.collector,
-          });
-          const topScore = result.hits[0]?.score ?? 0;
-          return {
-            ok: true as const,
-            data: {
-              sources: result.hits.map((hit) => docSource(hit, topScore)),
-              strategy: result.strategy,
-              keywordConfidence: result.keywordConfidence,
-            },
-            source: 'docs' as const,
-          };
-        },
-      }),
-      'read',
-      () => ({ scope: 'local', operation: 'searchDocs' }),
-    ),
+    searchDocs: createSearchDocsTool(options),
 
     listApps: trusted(
       tool({
@@ -400,7 +424,7 @@ export function createLiaraTools(
         },
       }),
       'read',
-      ({ appName }) => liaraProbe('paas', 'GET', `/v1/projects/${appName}/logs`),
+      ({ appName }) => liaraProbe('paas', 'GET', `/v2/projects/${appName}/logs`),
     ),
 
     getAppEvents: trusted(

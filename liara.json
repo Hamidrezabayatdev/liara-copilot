@@ -1,6 +1,16 @@
 {
   "next": {
-    "mirror": true
+    "mirror": false
   },
-  "port": 3000
+  "build": {
+    "location": "germany"
+  },
+  "port": 3000,
+  "healthCheck": {
+    "command": "CMD curl --fail http://localhost:3000/api/health || exit 1",
+    "interval": 30000,
+    "timeout": 10000,
+    "retries": 2,
+    "startPeriod": 3000
+  }
 }

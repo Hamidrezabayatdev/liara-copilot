@@ -2,16 +2,24 @@
   "name": "liara-copilot",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import ./scripts/register-ts.mjs --test $(find src -name '*.test.ts' -print | sort)"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import ./scripts/register-ts.mjs --test $(find src -name '*.test.ts' -print | sort)",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "package:liara": "NEXT_OUTPUT_STANDALONE=true next build && node scripts/prepare-liara-standalone.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^4.0.45",
-    "@ai-sdk/react": "^4.0.74",
+    "@ai-sdk/openai": "4.0.44",
+    "@ai-sdk/react": "4.0.73",
     "@fontsource-variable/vazirmatn": "^5.3.0",
     "@radix-ui/react-collapsible": "^1.1.20",
     "@radix-ui/react-dialog": "^1.1.23",
@@ -21,7 +29,7 @@
     "@radix-ui/react-slot": "^1.3.3",
     "@radix-ui/react-tabs": "^1.1.21",
     "@radix-ui/react-tooltip": "^1.2.16",
-    "ai": "^7.0.71",
+    "ai": "7.0.70",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "idb": "^8.0.3",
@@ -36,14 +44,16 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
+    "eslint-import-resolver-typescript": "3.9.1",
     "tailwindcss": "^4",
     "typescript": "^5"
-  },
-  "packageManager": "pnpm@9.15.9"
+  }
 }

@@ -34,7 +34,7 @@ export type RouteDecision = {
 const L3_FAILURE = [
 'خطا','ارور','۵۰۲','502','500','503','504','۵۰۰','۵۰۳','crash','کرش','fail','شکست',
 'نشد','داون','down','قطع شد','از کار افتاد','کار نمی','بالا نمی','ران نمی','لود نمی','باز نمی',
-'timeout','تایم اوت','unhealthy','بی‌پاسخ','هنگ','چرا','عیب‌یابی','عیب یابی','دیباگ','debug',
+'timeout','تایم اوت','unhealthy','بی‌پاسخ','هنگ','عیب‌یابی','عیب یابی','دیباگ','debug',
 'مشکل','ایراد','علت','ریشه','تشخیص','رفع','درست کن','fix','بررسی کن','چک کن',
 ];
 
@@ -80,9 +80,23 @@ const L2_ACTIVATORS = ['من','خودم','نشان بده','نمایش بده','
  * the platform rather than asking us to touch it.
  */
 const L1_FRAME = [
-'چطور','چگونه','چیست','چیه','یعنی چه','یعنی چی','تفاوت','فرق','آیا','قیمت','تعرفه',
+'چطور','چگونه','چرا','چیست','چیه','یعنی چه','یعنی چی','تفاوت','فرق','آیا','قیمت','تعرفه',
 'راهنما','مستندات','docs','داکیومنت','میشود','می‌شود','آموزش','معرفی','توضیح بده',
 'پشتیبانی می','امکان','بهتره','پیشنهاد',
+];
+
+/**
+ * Architecture recommendations are multi-resource account reads, not generic
+ * documentation questions. Keep the noun and recommendation intent separate
+ * so «معماری شبکهٔ خصوصی چیست؟» remains a cheap Level 1 explanation while
+ * «برای workload من معماری پیشنهاد بده» can inspect existing resources and
+ * live plans at Level 2.
+ */
+const ARCHITECTURE_NOUN = [
+  'معماری','architecture','workload','طراحی زیرساخت','پیشنهاد زیرساخت',
+];
+const ARCHITECTURE_RECOMMENDATION = [
+  'پیشنهاد','طراحی کن','طراحی بده','مناسب','انتخاب','بچین','معماری بده',
 ];
 
 /** Short replies that continue whatever we were already doing. */
@@ -187,7 +201,20 @@ export async function route(
     );
   }
 
-  // 5. A how-to frame with no account signal is the cheapest path.
+  // 5. Architecture recommendations may need current resources and live plan
+  // prices, but remain read-only. This intentionally precedes the generic
+  // «پیشنهاد» documentation frame.
+  const architecture = matched(text, ARCHITECTURE_NOUN);
+  const recommendation = matched(text, ARCHITECTURE_RECOMMENDATION);
+  if (architecture && recommendation) {
+    return decide(
+      2,
+      `«${architecture}» همراه با درخواست «${recommendation}» یک پیشنهاد وابسته به workload است؛ منابع و پلن‌ها فقط‌خواندنی بررسی می‌شوند. مسیریابی رایگان بود.`,
+      'heuristic',
+    );
+  }
+
+  // 6. A how-to frame with no account signal is the cheapest path.
   if (frame) {
     return decide(
       1,
@@ -196,7 +223,7 @@ export async function route(
     );
   }
 
-  // 6. A resource noun counts only when something makes it concrete.
+  // 7. A resource noun counts only when something makes it concrete.
   const weak = matched(text, L2_WEAK);
   if (weak && (matched(text, L2_ACTIVATORS) || RESOURCE_NAME.test(text))) {
     return decide(
@@ -206,7 +233,7 @@ export async function route(
     );
   }
 
-  // 3. Ambiguous: one cheap classification call.
+  // 8. Ambiguous: one cheap classification call.
   return classifyWithModel(message, opts.collector);
 }
 

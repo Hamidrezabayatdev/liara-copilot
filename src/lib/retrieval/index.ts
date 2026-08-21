@@ -8,7 +8,7 @@
  * `strategy` field is what the UI reports.
  */
 import { bm25Search, keywordConfidence, type Hit } from './bm25';
-import { tokenizeFa } from './normalize';
+import { expandQuery, keepTerm, tokenizeFa } from './normalize';
 import { semanticEnabled, semanticSearch } from './semantic';
 import type { UsageCollector } from '../ai/provider';
 
@@ -42,6 +42,16 @@ const MIN_RELATIVE_SCORE = 0.2;
 // not ordinary ranking noise (for example 100 → 85 should remain a cluster).
 const MIN_SCORE_GAP = 0.2;
 
+/**
+ * Words that identify the documentation collection, not the user's subject.
+ * A hit matching only «لیارا» does not ground a question about an unrelated
+ * concept, while a genuinely broad query such as «لیارا چیست؟» is still valid.
+ */
+const GENERIC_DOC_TERMS = new Set([
+  'لیارا', 'liara', 'پلتفرم', 'platform', 'سرویس', 'service', 'محصول',
+  'راهنما', 'مستندات', 'docs', 'داکیومنت',
+]);
+
 export type RelevanceOptions = {
   /** Caller-requested ceiling; the global context cap still applies. */
   maxResults?: number;
@@ -65,6 +75,59 @@ function canonicalAffinity(hit: Hit): number {
     if (token.length >= 4 && urlTokens.has(token)) matches += 1;
   }
   return matches;
+}
+
+function termMatchesDocument(term: string, documentTerms: ReadonlySet<string>): boolean {
+  for (const documentTerm of documentTerms) {
+    if (term === documentTerm) return true;
+    // The index deliberately supports prefixes for Persian suffixes. Apply the
+    // same conservative rule to this evidence gate so «خطا» matches «خطای».
+    if (
+      Math.min(term.length, documentTerm.length) >= 3 &&
+      (term.startsWith(documentTerm) || documentTerm.startsWith(term))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Reject accidental BM25 winners that only share a generic or isolated word.
+ *
+ * MiniSearch uses OR matching, so an out-of-domain question can otherwise get
+ * a plausible-looking top result merely because one word is also a Liara plan
+ * name. We group synonyms per original query concept and require one selected
+ * excerpt to cover at least half of the meaningful concepts. This is a cheap,
+ * deterministic grounding gate; an intentionally broad Liara query has no
+ * discriminating concepts and is allowed through.
+ */
+export function hasLexicalEvidence(query: string, hits: readonly Hit[]): boolean {
+  if (hits.length === 0) return false;
+
+  const concepts = [...new Set(tokenizeFa(query).filter(keepTerm))]
+    .filter((term) => !GENERIC_DOC_TERMS.has(term))
+    .map((term) => [...new Set(expandQuery(term).filter(keepTerm))]);
+
+  if (concepts.length === 0) return true;
+  const requiredMatches = Math.ceil(concepts.length / 2);
+
+  return hits.some((hit) => {
+    const documentTerms = new Set(tokenizeFa(`${hit.title} ${hit.section} ${hit.text}`));
+    let matchedConcepts = 0;
+    for (const alternatives of concepts) {
+      if (alternatives.some((term) => termMatchesDocument(term, documentTerms))) {
+        matchedConcepts += 1;
+        if (matchedConcepts >= requiredMatches) return true;
+      }
+    }
+    return false;
+  });
+}
+
+function selectKeywordEvidence(query: string, hits: readonly Hit[], limit: number): Hit[] {
+  const selected = selectRelevantHits(hits, { maxResults: limit });
+  return hasLexicalEvidence(query, selected) ? selected : [];
 }
 
 /** Keep one representative for near-identical excerpts, preferring its canonical URL. */
@@ -210,7 +273,7 @@ export async function searchDocs(
 
   if (!wantSemantic) {
     return {
-      hits: selectRelevantHits(keyword, { maxResults: limit }),
+      hits: selectKeywordEvidence(query, keyword, limit),
       strategy: 'bm25',
       keywordConfidence: confidence,
     };
@@ -223,7 +286,7 @@ export async function searchDocs(
     // Enabled but unavailable (no vector file, or the call failed). Report the
     // path that actually ran rather than the one that was requested.
     return {
-      hits: selectRelevantHits(keyword, { maxResults: limit }),
+      hits: selectKeywordEvidence(query, keyword, limit),
       strategy: 'bm25',
       keywordConfidence: confidence,
     };

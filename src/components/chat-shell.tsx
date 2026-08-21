@@ -103,16 +103,18 @@ import { cn } from "@/lib/utils";
 const transport = new DefaultChatTransport({ api: "/api/chat" });
 
 const HERO_PROMPTS = [
-  "چرا digishop-api خطای ۵۰۲ می‌دهد؟",
-  "وضعیت برنامه‌ها و دیتابیس‌های من چطور است؟",
-  "برای deploy امن Next.js چه تنظیماتی لازم است؟",
+  { prompt: "چرا digishop-api خطای ۵۰۲ می‌دهد؟", requiresAccount: true },
+  { prompt: "وضعیت برنامه‌ها و دیتابیس‌های من چطور است؟", requiresAccount: true },
+  { prompt: "برای deploy امن Next.js چه تنظیماتی لازم است؟", requiresAccount: false },
+  { prompt: "چطور دامنه را به اپلیکیشن متصل کنم؟", requiresAccount: false },
+  { prompt: "چه زمانی از Object Storage استفاده کنم؟", requiresAccount: false },
 ] as const;
 
 const RESOURCE_PROMPTS = [
-  { label: "برنامه‌ها", icon: BoxesIcon, prompt: "برنامه‌های حسابم را بررسی کن" },
-  { label: "دیتابیس", icon: DatabaseIcon, prompt: "دیتابیس‌های حسابم را بررسی کن" },
-  { label: "DNS", icon: Globe2Icon, prompt: "رکوردهای DNS حسابم را بررسی کن" },
-  { label: "مستندات", icon: BookOpenTextIcon, prompt: "در مستندات لیارا جست‌وجو کن" },
+  { label: "برنامه‌ها", icon: BoxesIcon, prompt: "برنامه‌های حسابم را بررسی کن", requiresAccount: true },
+  { label: "دیتابیس", icon: DatabaseIcon, prompt: "دیتابیس‌های حسابم را بررسی کن", requiresAccount: true },
+  { label: "DNS", icon: Globe2Icon, prompt: "رکوردهای DNS حسابم را بررسی کن", requiresAccount: true },
+  { label: "مستندات", icon: BookOpenTextIcon, prompt: "در مستندات لیارا جست‌وجو کن", requiresAccount: false },
 ] as const;
 
 const TOOL_LABELS: Record<string, string> = {
@@ -615,6 +617,36 @@ function messageText(message: UIMessage): string {
     .filter((part) => part.type === "text")
     .map((part) => part.text)
     .join("\n\n");
+}
+
+function chatErrorCopy(error: Error | undefined): {
+  message: string;
+  retry: boolean;
+} {
+  const fallback = {
+    message: "ارتباط با دستیار کامل نشد. اتصال و تنظیمات سرور را بررسی کنید.",
+    retry: true,
+  };
+  if (!error?.message) return fallback;
+
+  try {
+    const payload = JSON.parse(error.message) as { error?: unknown };
+    if (typeof payload.error !== "string" || payload.error.length > 240) {
+      return fallback;
+    }
+    const message = payload.error.trim();
+    if (!message) return fallback;
+    return {
+      message,
+      retry: !(
+        message.includes("حساب Liara خود را متصل کنید") ||
+        message.includes("سهم پرسش‌های عمومی") ||
+        message.includes("تعداد درخواست‌ها بیش از حد")
+      ),
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 function askInput(input: unknown): {
@@ -1363,11 +1395,20 @@ function hasPendingQuestion(messages: UIMessage[]): boolean {
 
 function EmptyChat({
   disabled,
+  accountConnected,
   onPrompt,
 }: {
   disabled: boolean;
+  accountConnected: boolean;
   onPrompt: (prompt: string) => void;
 }) {
+  const resourcePrompts = RESOURCE_PROMPTS.filter(
+    (resource) => accountConnected || !resource.requiresAccount,
+  );
+  const heroPrompts = HERO_PROMPTS.filter(
+    (prompt) => accountConnected || !prompt.requiresAccount,
+  ).slice(0, 3);
+
   return (
     <div className="flex flex-1 items-start justify-center py-10 sm:items-center">
       <section className="w-full max-w-2xl" aria-labelledby="empty-chat-title">
@@ -1376,7 +1417,9 @@ function EmptyChat({
             چه چیزی را بررسی کنیم؟
           </h2>
           <p className="text-muted-foreground mt-2 text-sm">
-            دربارهٔ منابع حساب یا مستندات لیارا بپرسید.
+            {accountConnected
+              ? "دربارهٔ منابع حساب یا مستندات لیارا بپرسید."
+              : "پرسش‌های مستنداتی آماده‌اند؛ برای بررسی منابع واقعی، حساب را متصل کنید."}
           </p>
         </div>
 
@@ -1384,7 +1427,7 @@ function EmptyChat({
           className="mb-4 flex flex-wrap items-center justify-center gap-2"
           aria-label="دسترسی سریع به منابع"
         >
-          {RESOURCE_PROMPTS.map((resource) => {
+          {resourcePrompts.map((resource) => {
             const Icon = resource.icon;
             return (
               <Button
@@ -1404,7 +1447,7 @@ function EmptyChat({
         </div>
 
         <div className="grid gap-2 sm:grid-cols-3">
-          {HERO_PROMPTS.map((prompt) => (
+          {heroPrompts.map(({ prompt }) => (
             <Button
               key={prompt}
               type="button"
@@ -1434,6 +1477,7 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
   const [showLatestButton, setShowLatestButton] = React.useState(false);
   const [approvalBusy, setApprovalBusy] = React.useState<string | null>(null);
   const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
+  const [accountConnected, setAccountConnected] = React.useState(false);
 
   const {
     messages,
@@ -1469,6 +1513,7 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
   const lastMessage = messages.at(-1);
   const showPendingAssistant =
     status === "submitted" && lastMessage?.role !== "assistant";
+  const visibleError = chatErrorCopy(error);
 
   React.useEffect(() => {
     scheduleChatHistorySave(messages);
@@ -1479,7 +1524,11 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
     if (!viewport) return;
     pinnedToBottomRef.current = true;
     setShowLatestButton(false);
-    viewport.scrollTo({ top: viewport.scrollHeight, behavior });
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    viewport.scrollTo({
+      top: viewport.scrollHeight,
+      behavior: reduceMotion ? "auto" : behavior,
+    });
   }, []);
 
   const trackScrollPosition = React.useCallback(() => {
@@ -1614,7 +1663,13 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
       : CheckCircle2Icon;
 
   return (
-    <div className="relative flex h-svh min-h-0 flex-1 flex-col overflow-hidden bg-background">
+    <div className="relative flex h-dvh min-h-0 flex-1 flex-col overflow-hidden bg-background">
+      <a
+        href="#conversation-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-xs focus:font-semibold focus:text-primary-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        رفتن به گفتگو
+      </a>
       <header className="shrink-0 border-b border-border/55 bg-background">
         <div className="flex h-14 w-full items-center gap-2.5 px-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -1653,20 +1708,29 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
           <AccountConnection
             disabled={busy || Boolean(pendingApproval) || pendingQuestion}
             onConnectionChange={resetForAccountChange}
+            onConnectionStatusChange={setAccountConnected}
           />
           <ThemeToggle />
         </div>
       </header>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        <main className="relative flex min-w-0 flex-1 flex-col">
+        <main
+          id="conversation-main"
+          tabIndex={-1}
+          className="relative flex min-w-0 flex-1 flex-col outline-none"
+        >
           <section className="relative min-h-0 flex-1">
             <div
               ref={scrollRef}
               onScroll={trackScrollPosition}
-              className="chat-scroll scrollbar-slim size-full overflow-y-auto"
-              role="region"
+              className="chat-scroll scrollbar-slim size-full overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              role="log"
               aria-label="گفتگو با کوپایلت"
+              aria-live="polite"
+              aria-relevant="additions"
+              aria-atomic="false"
+              tabIndex={0}
             >
               <div
                 ref={contentRef}
@@ -1675,7 +1739,11 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
                 aria-busy={busy}
               >
                 {messages.length === 0 && !error ? (
-                  <EmptyChat disabled={busy} onPrompt={send} />
+                  <EmptyChat
+                    disabled={busy}
+                    accountConnected={accountConnected}
+                    onPrompt={send}
+                  />
                 ) : (
                   <div className="flex flex-col gap-5">
                     {messages.map((message, messageIndex) => {
@@ -1716,11 +1784,13 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
                       <MessageBubble
                         role="assistant"
                         content=""
-                        error="ارتباط با دستیار کامل نشد. اتصال و تنظیمات سرور را بررسی کنید."
-                        onRetry={() => {
-                          clearError();
-                          void retry();
-                        }}
+                        error={visibleError.message}
+                        onRetry={visibleError.retry
+                          ? () => {
+                              clearError();
+                              void retry();
+                            }
+                          : undefined}
                       />
                     ) : null}
 
@@ -1747,7 +1817,7 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
 
           <footer
             ref={dockRef}
-            className="chat-dock pointer-events-none absolute inset-x-0 bottom-0 px-3 pt-2 pb-3 sm:px-6 sm:pb-4"
+            className="chat-dock pointer-events-none absolute inset-x-0 bottom-0 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-[max(1rem,env(safe-area-inset-bottom))]"
           >
             <div className="pointer-events-auto mx-auto w-full max-w-3xl">
               <ChatComposer
@@ -1816,7 +1886,7 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
 function ChatHistoryLoading() {
   return (
     <div
-      className="relative flex h-svh min-h-0 flex-1 flex-col overflow-hidden bg-background"
+      className="relative flex h-dvh min-h-0 flex-1 flex-col overflow-hidden bg-background"
       aria-busy="true"
       aria-label="در حال بارگذاری تاریخچهٔ گفتگو"
     >

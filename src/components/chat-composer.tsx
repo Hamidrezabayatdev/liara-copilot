@@ -60,6 +60,8 @@ function ChatComposer({
   const controlled = value !== undefined;
   const text = controlled ? value : internal;
   const ref = React.useRef<HTMLTextAreaElement | null>(null);
+  const helpId = React.useId();
+  const countId = React.useId();
 
   const setText = React.useCallback(
     (next: string) => {
@@ -146,30 +148,44 @@ function ChatComposer({
         ) : null}
 
         <textarea
+          id="chat-composer-input"
           ref={ref}
           rows={1}
           dir="rtl"
           value={text}
           maxLength={maxLength}
           disabled={disabled}
+          autoComplete="off"
+          enterKeyHint="send"
           placeholder={placeholder}
           onKeyDown={onKeyDown}
           onChange={(e) => setText(e.target.value)}
           aria-label="پیام به دستیار"
+          aria-keyshortcuts="Enter"
+          aria-describedby={remaining < 200 ? `${helpId} ${countId}` : helpId}
           className="scrollbar-slim placeholder:text-muted-foreground/65 block w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-start text-[0.875rem] leading-7 outline-none disabled:cursor-not-allowed sm:px-4"
         />
+
+        <p id={helpId} className="sr-only">
+          برای ارسال Enter و برای رفتن به خط بعد Shift و Enter را فشار دهید.
+        </p>
 
         <div className="flex items-center gap-2 px-3 pt-0.5 pb-2.5 sm:px-4">
           <span className="flex-1" />
           {remaining < 200 ? (
             <span
+              id={countId}
               dir="ltr"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
               className={cn(
                 "ltr-embed text-[0.625rem] tabular-nums",
                 remaining < 40 ? "text-destructive" : "text-muted-foreground",
               )}
             >
-              {remaining}
+              <span aria-hidden>{remaining}</span>
+              <span className="sr-only">{remaining} نویسه باقی مانده است</span>
             </span>
           ) : null}
           {streaming ? (

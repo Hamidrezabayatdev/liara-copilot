@@ -227,6 +227,7 @@ test('a query string cannot smuggle a different path past the matcher', () => {
   // Matching happens on the query-stripped value, so the base path still has
   // to be on the allow-list — and the query cannot promote a denied path.
   allowed('paas', 'GET', '/v1/projects/digishop-api/logs?since=0');
+  allowed('paas', 'GET', '/v2/projects/digishop-api/logs?start=0&direction=forward');
   assert.equal(
     normalizeApiPath('paas', 'GET', '/v1/projects?path=/v1/projects/x/disks/d/ftp'),
     '/v1/projects',

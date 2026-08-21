@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-const { DEFAULT_MODELS, MODELS, modelIdFor } = (await import(
+const { DEFAULT_MODELS, MODELS, modelCallBudget, modelIdFor } = (await import(
   new URL('provider.ts', import.meta.url).href
 )) as typeof import('./provider');
 
@@ -30,4 +30,12 @@ test('tier lookup honors an explicit environment override', () => {
     if (previous === undefined) delete process.env.MODEL_ANSWER;
     else process.env.MODEL_ANSWER = previous;
   }
+});
+
+test('model call circuit breaker is bounded and keeps a functional default', () => {
+  assert.equal(modelCallBudget({}), 18);
+  assert.equal(modelCallBudget({ MAX_MODEL_CALLS_PER_REQUEST: '2' }), 4);
+  assert.equal(modelCallBudget({ MAX_MODEL_CALLS_PER_REQUEST: '200' }), 32);
+  assert.equal(modelCallBudget({ MAX_MODEL_CALLS_PER_REQUEST: '12.9' }), 12);
+  assert.equal(modelCallBudget({ MAX_MODEL_CALLS_PER_REQUEST: 'invalid' }), 18);
 });

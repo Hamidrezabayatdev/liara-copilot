@@ -58,3 +58,9 @@ test('query expansion bridges vocabulary the docs never use', () => {
   assert.ok(expanded.includes('برنامه'), 'اپ must reach برنامه');
   assert.ok(expanded.includes('دیپلوی'), 'the original term is kept too');
 });
+
+test('English health-check wording reaches the Persian documentation title', () => {
+  const expanded = expandQuery('Health Check');
+  assert.ok(expanded.includes('سلامت'), 'health must reach سلامت');
+  assert.ok(expanded.includes('بررسی'), 'check must reach بررسی');
+});

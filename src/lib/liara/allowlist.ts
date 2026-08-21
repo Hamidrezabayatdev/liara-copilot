@@ -246,6 +246,8 @@ const ALLOWED_READS: Record<Product, readonly string[]> = {
     '/v1/projects',
     '/v1/projects/{name}',
     '/v1/projects/{name}/logs',
+    // Current log API used by Liara CLI 9.5+ for new-infrastructure apps.
+    '/v2/projects/{name}/logs',
     '/v1/projects/{name}/events',
     '/v1/projects/{name}/releases',
     '/v1/projects/{name}/applets',

@@ -11,8 +11,8 @@ import {
   type UIMessage,
 } from 'ai';
 
-import type { LiaraTools } from './tools';
-import { activeToolsForTurn } from './capability';
+import type { DocsTools, LiaraTools } from './tools';
+import { activeToolsForTurn, type ToolName } from './capability';
 import { compactModelContext } from './context';
 import { summarize, type UsageMeta } from './cost';
 import { createToolApprovalPolicy, getScopedToolApprovalSecret } from './approval';
@@ -150,11 +150,39 @@ const safeStreamError = () =>
 
 export type StreamAgentOptions = {
   messages: ChatMessage[];
-  tools: LiaraTools;
+  tools: LiaraTools | DocsTools;
   approvalScope: string;
   abortSignal?: AbortSignal;
   collector?: UsageCollector;
+  /** Additional hard ceiling, used by anonymous sessions to expose docs only. */
+  allowedTools?: readonly ToolName[];
+  /** Trusted server-authored mode context; never populated from request text. */
+  operatingModeInstructions?: string;
+  /** Public sessions discard client-returned tool evidence before model use. */
+  acceptToolHistory?: boolean;
 };
+
+export function textOnlyMessageHistory(messages: readonly ChatMessage[]): ChatMessage[] {
+  return messages.flatMap((message) => {
+    const parts = message.parts.filter(
+      (part): part is Extract<typeof part, { type: 'text' }> => part.type === 'text',
+    );
+    return parts.length > 0 ? [{ ...message, parts }] : [];
+  });
+}
+
+export function narrowToolsForRequest(
+  level: RouteDecision['escalation'],
+  userText: string,
+  registeredToolNames: readonly string[],
+  allowedTools?: readonly ToolName[],
+): ToolName[] {
+  const registered = new Set(registeredToolNames);
+  const allowed = allowedTools ? new Set<ToolName>(allowedTools) : null;
+  return [...activeToolsForTurn(level, userText)].filter(
+    (name) => registered.has(name) && (allowed === null || allowed.has(name)),
+  );
+}
 
 /**
  * Run one routed turn and return the AI SDK v7 UI-message stream response.
@@ -167,8 +195,15 @@ export async function streamAgentResponse({
   approvalScope,
   abortSignal,
   collector = createUsageCollector(),
+  allowedTools,
+  operatingModeInstructions,
+  acceptToolHistory = true,
 }: StreamAgentOptions): Promise<Response> {
-  const userText = latestUserText(messages);
+  // AI SDK validation accepts unknown historical tool parts for forward
+  // compatibility. In a public docs session those parts are client-controlled,
+  // so keep conversational text but never treat returned tool payloads as fact.
+  const trustedMessages = acceptToolHistory ? messages : textOnlyMessageHistory(messages);
+  const userText = latestUserText(trustedMessages);
   if (!userText) throw new TypeError('A text user message is required');
   if (userText.length > MAX_USER_MESSAGE_CHARS) {
     throw new RangeError(`User message exceeds ${MAX_USER_MESSAGE_CHARS} characters`);
@@ -177,7 +212,7 @@ export async function streamAgentResponse({
   // Continuity is reconstructed from the prior user text, never from
   // client-supplied assistant metadata. Most prior turns route heuristically
   // for zero tokens, and we only reroute one when the new message is terse.
-  const priorText = isContinuationMessage(userText) ? previousUserText(messages) : null;
+  const priorText = isContinuationMessage(userText) ? previousUserText(trustedMessages) : null;
   const priorDecision = priorText
     ? await route(priorText.slice(0, MAX_USER_MESSAGE_CHARS), { collector })
     : undefined;
@@ -185,9 +220,24 @@ export async function streamAgentResponse({
     collector,
     previousLevel: priorDecision?.escalation,
   });
-  const docsAlreadySearched = completedToolSinceLatestUser(messages, 'searchDocs');
-  const diagnosisAlreadyReported = completedToolSinceLatestUser(messages, 'reportDiagnosis');
-  const activeTools = [...activeToolsForTurn(decision.escalation, userText)].filter(
+  // Make the chosen route observable even if the answer stream later aborts.
+  // Tool count is replaced with the final value by summarize().
+  collector.summary = {
+    tier: decision.tier,
+    escalation: decision.escalation,
+    toolCalls: 0,
+  };
+  const docsAlreadySearched = completedToolSinceLatestUser(trustedMessages, 'searchDocs');
+  const diagnosisAlreadyReported = completedToolSinceLatestUser(
+    trustedMessages,
+    'reportDiagnosis',
+  );
+  const activeTools = narrowToolsForRequest(
+    decision.escalation,
+    userText,
+    Object.keys(tools),
+    allowedTools,
+  ).filter(
     (name) =>
       !(docsAlreadySearched && name === 'searchDocs') &&
       !(diagnosisAlreadyReported && name === 'reportDiagnosis'),
@@ -204,13 +254,24 @@ export async function streamAgentResponse({
   };
   const generationBudget = GENERATION_BUDGETS[decision.escalation];
 
-  const modelMessages = compactModelContext(await convertToModelMessages(messages, { tools }));
+  // ChatMessage carries the full connected-session UI tool vocabulary so a
+  // saved conversation remains type-stable. Anonymous runtime registries are a
+  // strict subset, and `activeTools` below is intersected with their real keys
+  // before the SDK sees them; this assertion never adds a missing runtime tool.
+  const runtimeTools = tools as LiaraTools;
+
+  const modelMessages = compactModelContext(await convertToModelMessages(trustedMessages, {
+    tools: runtimeTools,
+  }));
   const result = streamText({
     model: modelFor(decision.tier, collector),
-    instructions: systemPromptFor(decision.escalation, userText),
+    instructions: [
+      systemPromptFor(decision.escalation, userText),
+      operatingModeInstructions,
+    ].filter(Boolean).join('\n\n'),
     messages: modelMessages,
     ...generationBudget,
-    tools,
+    tools: runtimeTools,
     activeTools,
     prepareStep: ({ steps }) => {
       const alreadySearchedDocs = completedUsefulToolInSteps(steps, 'searchDocs');
@@ -233,12 +294,14 @@ export async function streamAgentResponse({
     maxRetries: 1,
     // The SDK default logs raw provider errors. Keep credentials and upstream
     // bodies out of server logs; the UI stream gets a fixed safe message below.
-    onError: () => undefined,
+    onError: () => {
+      collector.streamFailed = true;
+    },
   });
 
   const baseStream = toUIMessageStream<LiaraTools, ChatMessage>({
     stream: result.stream,
-    tools,
+    tools: runtimeTools,
     originalMessages: messages,
     generateMessageId: () => crypto.randomUUID(),
     sendReasoning: false,

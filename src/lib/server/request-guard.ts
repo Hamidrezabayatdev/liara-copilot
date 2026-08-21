@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 type RateBucket = {
   count: number;
   resetAt: number;
@@ -12,6 +14,15 @@ function clientAddress(request: Request): string {
   const direct = request.headers.get("x-real-ip")?.trim();
   const value = forwarded || direct || "unknown";
   return value.slice(0, 128);
+}
+
+/** Opaque per-client key for concurrency guards; never expose the raw address. */
+export function clientFingerprint(request: Request): string {
+  return createHash("sha256")
+    .update("liara-copilot:request-client:v1\0")
+    .update(clientAddress(request))
+    .digest("base64url")
+    .slice(0, 20);
 }
 
 /** Browser mutations must come from the exact public origin, not a sibling site. */
@@ -86,4 +97,19 @@ export function takeConcurrencySlot(
     if (next <= 0) activeRequests.delete(key);
     else activeRequests.set(key, next);
   };
+}
+
+/**
+ * Combine client cancellation with a server deadline that expires before the
+ * platform's hard request limit. The caller's signal is never replaced.
+ */
+export function withRequestDeadline(
+  parent: AbortSignal,
+  timeoutMs: number,
+): AbortSignal {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new RangeError("request deadline must be a positive duration");
+  }
+  if (parent.aborted) return parent;
+  return AbortSignal.any([parent, AbortSignal.timeout(Math.floor(timeoutMs))]);
 }

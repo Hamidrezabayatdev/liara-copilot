@@ -161,6 +161,30 @@ test('semantic search stays off unless explicitly enabled', async () => {
   assert.ok(res.hits.every((h) => h.url.startsWith('https://docs.liara.ir/')));
 });
 
+test('weak lexical overlap returns no evidence instead of forcing a winner', async () => {
+  // «مریخ» is a real Liara plan name, but that isolated collision must not
+  // ground an unrelated four-concept question.
+  const res = await searchDocs('کوانتوم موز بنفش در مریخ', { limit: 6 });
+  assert.equal(res.strategy, 'bm25');
+  assert.deepEqual(res.hits, []);
+});
+
+test('the weak-evidence gate preserves broad and synonym-backed docs questions', async () => {
+  for (const query of ['لیارا چیست؟', 'چرا باید از Object Storage استفاده کنم؟', 'دیپلوی اپ']) {
+    const res = await searchDocs(query, { limit: 6 });
+    assert.ok(res.hits.length > 0, `«${query}» lost its documentation evidence`);
+  }
+});
+
+test('mixed English/Persian health-check intent selects the official health-check page first', async () => {
+  const result = await searchDocs(
+    'تنظیمات Health Check برنامه Next.js روی Liara مسیر پورت interval timeout',
+    { limit: 6 },
+  );
+  assert.ok(result.hits.length > 0);
+  assert.match(result.hits[0].url, /\/paas\/details\/health-check\/?$/);
+});
+
 test('enabling the flag without a vector file degrades to keyword search', async () => {
   process.env.ENABLE_SEMANTIC_RAG = 'true';
   process.env.DOCS_VECTORS_PATH = 'data/does-not-exist.json';

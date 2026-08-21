@@ -12,13 +12,16 @@ const { classify } = (await import(
   new URL('../liara/allowlist.ts', import.meta.url).href
 )) as typeof import('../liara/allowlist');
 
-const { TOOL_NAMES, createLiaraTools } = toolsModule;
+const { TOOL_NAMES, createDocsTools, createLiaraTools } = toolsModule;
 
 const TEST_TOKEN = 'liara-test-token-that-must-never-leak';
 
 type LooseTool = {
   kind?: unknown;
   probe?: (input: unknown) => unknown;
+  inputSchema?: {
+    safeParse: (input: unknown) => { success: boolean };
+  };
   execute?: (input: unknown, options: unknown) => unknown;
 };
 
@@ -92,6 +95,16 @@ test('inventory is exactly the MASTER-PLAN 21-tool surface', () => {
   assert.doesNotMatch(JSON.stringify(tools), new RegExp(TEST_TOKEN));
 });
 
+test('anonymous registry contains documentation search and no account capability', () => {
+  const tools = createDocsTools();
+  assert.deepEqual(Object.keys(tools), ['searchDocs']);
+  assert.equal(tools.searchDocs.kind, 'read');
+  assert.deepEqual(tools.searchDocs.probe({ query: 'deploy node' }), {
+    scope: 'local',
+    operation: 'searchDocs',
+  });
+});
+
 test('every tool owns trusted metadata and no probe can reach DELETE', () => {
   const tools = registry();
   let liaraProbeCount = 0;
@@ -141,6 +154,25 @@ test('reportDiagnosis is a local read-only presentation tool', async () => {
     data: { rendered: true },
     source: 'inference',
   });
+});
+
+test('reportDiagnosis rejects high confidence when every evidence item is inference', () => {
+  const schema = registry().reportDiagnosis.inputSchema;
+  assert.ok(schema);
+
+  const inferenceOnly = {
+    ...(SAMPLE_INPUTS.reportDiagnosis as Record<string, unknown>),
+    evidence: [{ text: 'احتمالاً PORT اشتباه است', sourceKind: 'inference' }],
+    confidence: 0.9,
+  };
+  assert.equal(schema.safeParse(inferenceOnly).success, false);
+  assert.equal(schema.safeParse({ ...inferenceOnly, confidence: 0.55 }).success, true);
+
+  const observed = {
+    ...inferenceOnly,
+    evidence: [{ text: 'لاگ startup پورت 8080 را نشان می‌دهد', sourceKind: 'account' }],
+  };
+  assert.equal(schema.safeParse(observed).success, true);
 });
 
 test('listEnvVars redacts secret values before the tool result leaves the server', async () => {

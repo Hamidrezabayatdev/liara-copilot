@@ -41,6 +41,16 @@ const PERSIAN_TRANSLATIONS: Partial<StreamdownTranslations> = {
   openLink: "بازکردن پیوند",
 };
 
+function subscribeToReducedMotion(onStoreChange: () => void) {
+  const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+  query.addEventListener("change", onStoreChange);
+  return () => query.removeEventListener("change", onStoreChange);
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 /**
  * Full, streaming-safe markdown for agent answers.
  *
@@ -53,14 +63,21 @@ const RichText = React.memo(function RichText({
   streaming = false,
   className,
 }: RichTextProps) {
+  const reduceMotion = React.useSyncExternalStore(
+    subscribeToReducedMotion,
+    prefersReducedMotion,
+    () => false,
+  );
+  const animate = streaming && !reduceMotion;
+
   return (
     <Streamdown
       mode={streaming ? "streaming" : "static"}
       dir="auto"
       skipHtml
       parseIncompleteMarkdown={streaming}
-      isAnimating={streaming}
-      animated={streaming ? STREAM_ANIMATION : false}
+      isAnimating={animate}
+      animated={animate ? STREAM_ANIMATION : false}
       caret="circle"
       controls={MARKDOWN_CONTROLS}
       translations={PERSIAN_TRANSLATIONS}
