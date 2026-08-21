@@ -246,7 +246,7 @@
 .liara-markdown :where(h1) { font-size: 1.28rem; }
 .liara-markdown :where(h2) { font-size: 1.12rem; }
 .liara-markdown :where(h3, h4) { font-size: 0.98rem; }
-.liara-markdown :where(p, ul, ol, blockquote, pre, table) { margin-block: 0.7rem; }
+.liara-markdown :where(p, ul, ol, blockquote, pre) { margin-block: 0.7rem; }
 .liara-markdown :where(ul, ol) { padding-inline-start: 1.25rem; }
 .liara-markdown :where(ul) { list-style: disc; }
 .liara-markdown :where(ol) { list-style: decimal; }
@@ -338,15 +338,32 @@
   color: inherit;
   box-shadow: none;
 }
+.liara-markdown [data-streamdown="table-wrapper"] {
+  gap: 0.35rem;
+  margin-block: 0.85rem;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+.liara-markdown [data-streamdown="table-wrapper"] > div:last-child {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
 .liara-markdown :where(table) {
-  display: block;
-  max-width: 100%;
-  overflow-x: auto;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
-  border-radius: 0.5rem;
   font-size: 0.78rem;
 }
-.liara-markdown :where(th, td) { border: 1px solid var(--border); padding: 0.55rem 0.7rem; }
+.liara-markdown :where(th, td) {
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.7rem;
+  text-align: center;
+  vertical-align: middle;
+}
 .liara-markdown :where(th) { background: var(--muted); color: var(--foreground); font-weight: 700; }
 .liara-markdown > :first-child { margin-top: 0; }
 .liara-markdown > :last-child { margin-bottom: 0; }

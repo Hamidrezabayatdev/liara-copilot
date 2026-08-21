@@ -179,6 +179,39 @@ test("tool activity is shown before the final answer", async ({ page }) => {
   expect(activityComesFirst).toBe(true);
 });
 
+test("Markdown tables use one clean surface with centered cells", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.route("**/api/chat", async (route) => {
+    await fulfillAssistantStream(
+      route,
+      [
+        "| نام برنامه | وضعیت | دامنه پیش‌فرض |",
+        "| --- | --- | --- |",
+        "| `liara-copilot-ir` | ACTIVE | `liara-copilot-ir.iran.liara.run` |",
+      ].join("\n"),
+    );
+  });
+
+  const composer = page.getByRole("textbox", { name: "پیام به دستیار" });
+  await composer.fill("برنامه‌ها را به شکل جدول نشان بده");
+  await composer.press("Enter");
+
+  const wrapper = page.locator('[data-streamdown="table-wrapper"]');
+  const scrollSurface = wrapper.locator(":scope > div").last();
+  const table = wrapper.getByRole("table");
+  await expect(table).toBeVisible();
+  await expect(wrapper).toHaveCSS("border-top-width", "0px");
+  await expect(scrollSurface).toHaveCSS("border-top-width", "0px");
+  await expect(table).toHaveCSS("display", "table");
+  await expect(table.getByRole("columnheader").first()).toHaveCSS("text-align", "center");
+  await expect(table.getByRole("cell").first()).toHaveCSS("text-align", "center");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    ),
+  ).toBe(false);
+});
+
 test("disconnected account actions are gated and typed account requests explain the next step", async ({
   page,
 }) => {
