@@ -44,6 +44,7 @@
   --panel-shadow: 0 8px 24px -18px rgb(7 43 52 / 24%);
   --dock-shadow: 0 12px 72px -18px rgb(7 43 52 / 38%),
     0 2px 14px -6px rgb(7 43 52 / 22%);
+  --dock-backdrop-shadow: 0 -16px 110px 70px rgb(7 43 52 / 32%);
 
   --provenance-docs: oklch(0.59 0.145 221);
   --provenance-account: oklch(0.57 0.142 155);
@@ -93,6 +94,7 @@
   --panel-shadow: 0 8px 24px -18px rgb(0 0 0 / 72%);
   --dock-shadow: 0 12px 76px -16px rgb(0 0 0 / 88%),
     0 2px 18px -7px rgb(0 0 0 / 76%);
+  --dock-backdrop-shadow: 0 -16px 120px 78px rgb(0 0 0 / 94%);
 
   --provenance-docs: oklch(0.76 0.142 213);
   --provenance-account: oklch(0.76 0.145 157);
@@ -221,6 +223,15 @@
   overflow-anchor: none;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+}
+
+.chat-dock::before {
+  position: absolute;
+  inset-inline: -30vw;
+  bottom: -1px;
+  height: 1px;
+  box-shadow: var(--dock-backdrop-shadow);
+  content: "";
 }
 
 .liara-markdown { overflow-wrap: anywhere; text-wrap: pretty; }

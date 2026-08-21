@@ -1747,7 +1747,7 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
 
           <footer
             ref={dockRef}
-            className="pointer-events-none absolute inset-x-0 bottom-0 px-3 pt-2 pb-3 sm:px-6 sm:pb-4"
+            className="chat-dock pointer-events-none absolute inset-x-0 bottom-0 px-3 pt-2 pb-3 sm:px-6 sm:pb-4"
           >
             <div className="pointer-events-auto mx-auto w-full max-w-3xl">
               <ChatComposer
