@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   ArrowDownToLineIcon,
+  RadioIcon,
   ScrollTextIcon,
   SearchIcon,
   XIcon,
@@ -10,6 +11,10 @@ import {
 
 import { cn } from "@/lib/utils";
 import { formatClock, formatInt } from "@/components/format";
+import {
+  createLogFilename,
+  serializeLogLines,
+} from "@/components/log-download";
 import type { LogLine, LogSeverity } from "@/components/types";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
@@ -149,6 +154,23 @@ function LogViewer({
     [visibleLines],
   );
 
+  const downloadVisibleLogs = React.useCallback(() => {
+    if (visibleLines.length === 0) return;
+
+    const blob = new Blob([serializeLogLines(visibleLines)], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = createLogFilename(appName);
+    link.hidden = true;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }, [appName, visibleLines]);
+
   const total = visibleLines.length;
   const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
   const end = Math.min(
@@ -257,9 +279,21 @@ function LogViewer({
           variant={follow ? "subtle" : "ghost"}
           size="icon-xs"
           aria-label={follow ? "توقف دنبال کردن انتهای log" : "دنبال کردن انتهای log"}
+          title={follow ? "توقف نمایش زنده" : "ادامه نمایش زنده"}
           aria-pressed={follow}
           onClick={() => setFollow(!follow)}
           className={cn(follow && "text-primary")}
+        >
+          <RadioIcon />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label="دانلود logهای نمایش‌داده‌شده"
+          title="دانلود logها"
+          disabled={visibleLines.length === 0 || loading || Boolean(error)}
+          onClick={downloadVisibleLogs}
         >
           <ArrowDownToLineIcon />
         </Button>

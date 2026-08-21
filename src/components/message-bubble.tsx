@@ -166,34 +166,41 @@ function MessageBubble({
         </div>
 
         <div className="min-w-0 pt-2">
-          {error ? (
-            <div
-              className="border-s-2 border-destructive/50 py-1 ps-3"
-              role="alert"
-            >
-              <p className="flex items-start gap-2 text-xs leading-6 text-destructive">
-                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
-                <span>{error}</span>
-              </p>
-              {onRetry ? (
-                <Button variant="outline" size="xs" className="mt-3" onClick={onRetry}>
-                  <RotateCwIcon data-icon="inline-start" />
-                  تلاش مجدد
-                </Button>
-              ) : null}
-            </div>
-          ) : pending && !content ? (
-            <PendingAnswer />
-          ) : (
-            <RichText text={content} streaming={streaming} />
-          )}
-
           {children ? (
             <div
-              className="mt-5 flex flex-col gap-2.5 border-s border-border/70 ps-3.5 sm:ps-4"
+              className={cn(
+                "flex flex-col gap-2.5 border-s border-border/70 ps-3.5 sm:ps-4",
+                (content || error || pending) && "mb-5",
+              )}
               data-slot="assistant-activity"
             >
               {children}
+            </div>
+          ) : null}
+
+          {(content || error || pending) ? (
+            <div data-slot="assistant-answer">
+              {error ? (
+                <div
+                  className="border-s-2 border-destructive/50 py-1 ps-3"
+                  role="alert"
+                >
+                  <p className="flex items-start gap-2 text-xs leading-6 text-destructive">
+                    <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                    <span>{error}</span>
+                  </p>
+                  {onRetry ? (
+                    <Button variant="outline" size="xs" className="mt-3" onClick={onRetry}>
+                      <RotateCwIcon data-icon="inline-start" />
+                      تلاش مجدد
+                    </Button>
+                  ) : null}
+                </div>
+              ) : pending && !content ? (
+                <PendingAnswer />
+              ) : (
+                <RichText text={content} streaming={streaming} />
+              )}
             </div>
           ) : null}
 

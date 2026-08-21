@@ -47,6 +47,55 @@ async function fulfillAssistantStream(route: Route, markdown: string) {
   });
 }
 
+async function fulfillToolThenAnswerStream(route: Route, markdown: string) {
+  const chunks = [
+    { type: "start", messageId: "assistant-tool-e2e" },
+    { type: "start-step" },
+    {
+      type: "tool-input-available",
+      toolCallId: "docs-e2e",
+      toolName: "searchDocs",
+      input: { query: "Health Check" },
+    },
+    {
+      type: "tool-output-available",
+      toolCallId: "docs-e2e",
+      output: {
+        ok: true,
+        data: {
+          sources: [
+            {
+              id: "health-check-doc",
+              kind: "docs",
+              title: "Health Check",
+              snippet: "تنظیمات Health Check اپلیکیشن",
+              url: "https://docs.liara.ir/paas/details/health-check/",
+            },
+          ],
+        },
+      },
+    },
+    { type: "finish-step" },
+    { type: "start-step" },
+    { type: "text-start", id: "answer-after-tool" },
+    { type: "text-delta", id: "answer-after-tool", delta: markdown },
+    { type: "text-end", id: "answer-after-tool" },
+    { type: "finish-step" },
+    { type: "finish", finishReason: "stop" },
+  ];
+  const body = `${chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join("")}data: [DONE]\n\n`;
+
+  await route.fulfill({
+    status: 200,
+    headers: {
+      "cache-control": "no-cache",
+      "content-type": "text/event-stream",
+      "x-vercel-ai-ui-message-stream": "v1",
+    },
+    body,
+  });
+}
+
 async function expectNoAccessibilityViolations(page: Page) {
   const accessibility = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
@@ -97,6 +146,37 @@ test("the primary chat journey is keyboard-friendly and renders streamed Markdow
   await expect(composer).toHaveValue("");
   expect(chatRequests).toBe(1);
   await expectNoAccessibilityViolations(page);
+});
+
+test("tool activity is shown before the final answer", async ({ page }) => {
+  await page.route("**/api/chat", async (route) => {
+    await fulfillToolThenAnswerStream(
+      route,
+      "## پاسخ نهایی\n\nHealth Check برای سرویس فعال است.",
+    );
+  });
+
+  const composer = page.getByRole("textbox", { name: "پیام به دستیار" });
+  await composer.fill("Health Check را بررسی کن");
+  await composer.press("Enter");
+
+  const assistant = page.locator('[data-role="assistant"]').last();
+  const activity = assistant.locator('[data-slot="assistant-activity"]');
+  const answer = assistant.locator('[data-slot="assistant-answer"]');
+  await expect(activity.getByRole("button", { name: /منبع رسمی پیدا شد/ })).toBeVisible();
+  await expect(answer.getByRole("heading", { name: "پاسخ نهایی" })).toBeVisible();
+  await expect(answer).toBeInViewport();
+
+  const activityComesFirst = await assistant.evaluate((message) => {
+    const activityNode = message.querySelector('[data-slot="assistant-activity"]');
+    const answerNode = message.querySelector('[data-slot="assistant-answer"]');
+    return Boolean(
+      activityNode &&
+        answerNode &&
+        activityNode.compareDocumentPosition(answerNode) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+  expect(activityComesFirst).toBe(true);
 });
 
 test("disconnected account actions are gated and typed account requests explain the next step", async ({
