@@ -1422,10 +1422,15 @@ function EmptyChat({
   );
 }
 
+const DEFAULT_DOCK_HEIGHT_PX = 112;
+const DOCK_CONTENT_GAP_PX = 12;
+
 function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const contentRef = React.useRef<HTMLDivElement | null>(null);
+  const dockRef = React.useRef<HTMLElement | null>(null);
   const pinnedToBottomRef = React.useRef(true);
+  const [dockHeight, setDockHeight] = React.useState(DEFAULT_DOCK_HEIGHT_PX);
   const [showLatestButton, setShowLatestButton] = React.useState(false);
   const [approvalBusy, setApprovalBusy] = React.useState<string | null>(null);
   const [clearDialogOpen, setClearDialogOpen] = React.useState(false);
@@ -1511,6 +1516,32 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
     observer.observe(content);
     return () => observer.disconnect();
   }, [messages.length]);
+
+  React.useLayoutEffect(() => {
+    const dock = dockRef.current;
+    const viewport = scrollRef.current;
+    if (!dock || typeof ResizeObserver === "undefined") return;
+    const hasConversation = messages.length > 0 || Boolean(error);
+
+    let frame = 0;
+    const syncDockHeight = () => {
+      const nextHeight = Math.ceil(dock.getBoundingClientRect().height);
+      setDockHeight((current) => (current === nextHeight ? current : nextHeight));
+      if (!viewport || !hasConversation || !pinnedToBottomRef.current) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        viewport.scrollTop = viewport.scrollHeight;
+      });
+    };
+
+    syncDockHeight();
+    const observer = new ResizeObserver(syncDockHeight);
+    observer.observe(dock);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [error, messages.length]);
 
   const send = React.useCallback(
     (text: string) => {
@@ -1628,7 +1659,7 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
       </header>
 
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className="relative flex min-w-0 flex-1 flex-col">
           <section className="relative min-h-0 flex-1">
             <div
               ref={scrollRef}
@@ -1639,7 +1670,8 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
             >
               <div
                 ref={contentRef}
-                className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-3 py-5 sm:px-6 sm:py-8 lg:px-10"
+                className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-3 pt-5 sm:px-6 sm:pt-8 lg:px-10"
+                style={{ paddingBottom: dockHeight + DOCK_CONTENT_GAP_PX }}
                 aria-busy={busy}
               >
                 {messages.length === 0 && !error ? (
@@ -1704,7 +1736,8 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
                 variant="outline"
                 size="sm"
                 onClick={() => scrollToLatest("smooth")}
-                className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-md shadow-sm"
+                className="absolute left-1/2 -translate-x-1/2 rounded-md shadow-sm"
+                style={{ bottom: dockHeight + DOCK_CONTENT_GAP_PX }}
               >
                 <ArrowDownIcon data-icon="inline-start" />
                 جدیدترین پاسخ
@@ -1712,8 +1745,11 @@ function ChatSession({ initialMessages }: { initialMessages: UIMessage[] }) {
             ) : null}
           </section>
 
-          <footer className="shrink-0 px-3 pt-2 pb-3 sm:px-6 sm:pb-4">
-            <div className="mx-auto w-full max-w-3xl">
+          <footer
+            ref={dockRef}
+            className="pointer-events-none absolute inset-x-0 bottom-0 px-3 pt-2 pb-3 sm:px-6 sm:pb-4"
+          >
+            <div className="pointer-events-auto mx-auto w-full max-w-3xl">
               <ChatComposer
                 onSend={send}
                 streaming={busy}
