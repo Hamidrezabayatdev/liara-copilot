@@ -273,6 +273,50 @@
   color: #e8f7f5;
   box-shadow: inset 0 1px rgb(255 255 255 / 5%);
 }
+.liara-markdown [data-streamdown="code-block"] {
+  gap: 0;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background: color-mix(in oklab, var(--brand-ink) 94%, var(--card));
+  padding: 0;
+}
+.liara-markdown [data-streamdown="code-block-header"] {
+  height: 2.25rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 45%, transparent);
+  padding-inline: 0.75rem;
+}
+.liara-markdown
+  [data-streamdown="code-block-header"]:where(
+    [data-language="text"],
+    [data-language="plaintext"],
+    [data-language="txt"]
+  )
+  span {
+  display: none;
+}
+.liara-markdown [data-streamdown="code-block-actions"] {
+  border: 0;
+  background: transparent;
+  padding: 0.125rem;
+  backdrop-filter: none;
+}
+.liara-markdown [data-streamdown="code-block-body"] {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.875rem 1rem 1rem;
+  color: #e8f7f5;
+}
+.liara-markdown [data-streamdown="code-block"] :where(pre) {
+  margin: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  box-shadow: none;
+}
 .liara-markdown :where(table) {
   display: block;
   max-width: 100%;
