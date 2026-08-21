@@ -98,7 +98,7 @@ this exact version. Never write SDK code from memory.
 | Tier | Model | Used for |
 |---|---|---|
 | router | `deepseek/deepseek-v4-flash` | classification, only when heuristics fail |
-| answer | `openai/gpt-5.6-luna` | Level 1 and Level 2 |
+| answer | `openai/gpt-5.6-luna-pro` | Level 1 and Level 2 |
 | reason | `google/gemini-3.7-flash` | Level 3 only |
 | baseline | `anthropic/claude-opus-5` | **never called** — prices the counterfactual |
 | embed | `intfloat/multilingual-e5-large` | semantic retrieval, flag-gated |
@@ -293,8 +293,8 @@ model route around per-action rules. Only fine-grained named tools.
 
 | Level | Trigger | Model | Tools | Steps |
 |---|---|---|---|---|
-| **1** simple | definitional, "what is X" | **GPT-5.6 Luna** | docs only | 2 · reasoning none · 1,600 output max |
-| **2** contextual | about *this* account | **GPT-5.6 Luna** | docs + 12 read tools | 5 · reasoning low · 2,400 output max |
+| **1** simple | definitional, "what is X" | **GPT-5.6 Luna Pro** | docs only | 2 · reasoning none · 1,600 output max |
+| **2** contextual | about *this* account | **GPT-5.6 Luna Pro** | docs + 12 read tools | 5 · reasoning low · 2,400 output max |
 | **3** troubleshooting | failure, or a write | **Gemini 3.7 Flash** | docs + reads + gated writes | 12 · reasoning medium · 4,096 output max |
 
 **Routing is deterministic first.** Signal arrays are checked in a fixed order —
@@ -469,7 +469,7 @@ endpoint exists; scheduling a nonexistent endpoint would reduce reliability.
 ## 6. The hero demo — both extremes, back to back
 
 **Take 1 — «لیارا چیست؟»**
-One tool call. GPT-5.6 Luna. Two steps. Answer with a docs citation. Badge shows a
+One tool call. GPT-5.6 Luna Pro. Two steps. Answer with a docs citation. Badge shows a
 fraction of a Toman. *This question did not deserve an agent, and it did not get one.*
 
 **Take 2 — «چرا digishop-api پاسخ ۵۰۲ می‌دهد؟»**

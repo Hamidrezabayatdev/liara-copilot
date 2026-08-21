@@ -61,7 +61,7 @@ test('summary preserves a real per-model split across router and answer calls', 
         status: 200,
       },
       {
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/gpt-5.6-luna-pro',
         usage: {
           prompt_tokens: 20,
           completion_tokens: 4,
@@ -79,7 +79,7 @@ test('summary preserves a real per-model split across router and answer calls', 
   assert.equal(result.costComplete, true);
   assert.deepEqual(result.modelBreakdown, [
     { model: 'deepseek/deepseek-v4-flash', calls: 1, toman: 2 },
-    { model: 'openai/gpt-5.6-luna', calls: 1, toman: 5 },
+    { model: 'openai/gpt-5.6-luna-pro', calls: 1, toman: 5 },
   ]);
 });
 
@@ -87,7 +87,7 @@ test('an unpriced successful failover marks cost incomplete and suppresses savin
   const result = await summarize(
     collector([
       {
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/gpt-5.6-luna-pro',
         usage: {
           prompt_tokens: 20,
           completion_tokens: 4,
@@ -107,6 +107,6 @@ test('an unpriced successful failover marks cost incomplete and suppresses savin
   assert.equal(result.baselineToman, 0);
   assert.equal(result.savedPercent, 0);
   assert.deepEqual(result.modelBreakdown, [
-    { model: 'openai/gpt-5.6-luna', calls: 1, toman: 0 },
+    { model: 'openai/gpt-5.6-luna-pro', calls: 1, toman: 0 },
   ]);
 });

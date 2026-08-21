@@ -12,7 +12,7 @@ const { DEFAULT_MODELS, MODELS, modelCallBudget, modelIdFor } = (await import(
 test('cost-aware defaults use the verified Liara model ids', () => {
   assert.deepEqual(DEFAULT_MODELS, {
     router: 'deepseek/deepseek-v4-flash',
-    answer: 'openai/gpt-5.6-luna',
+    answer: 'openai/gpt-5.6-luna-pro',
     reason: 'google/gemini-3.7-flash',
     baseline: 'anthropic/claude-opus-5',
     embed: 'intfloat/multilingual-e5-large',

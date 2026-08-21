@@ -12,7 +12,7 @@
 LIARA_AI_BASE_URL
 LIARA_AI_KEY
 MODEL_ROUTER=deepseek/deepseek-v4-flash
-MODEL_ANSWER=openai/gpt-5.6-luna
+MODEL_ANSWER=openai/gpt-5.6-luna-pro
 MODEL_REASON=google/gemini-3.7-flash
 MODEL_BASELINE=anthropic/claude-opus-5
 MODEL_EMBED=intfloat/multilingual-e5-large

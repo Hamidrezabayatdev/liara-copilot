@@ -56,13 +56,13 @@ databases: small-g2 486.11 │ medium-g2 833.33 │ ir-small 972.22 │ standard
 | نقش | model id | ورودی $/M | خروجی $/M |
 |---|---|---|---|
 | router | `deepseek/deepseek-v4-flash` | 0.0826 | 0.1652 |
-| answer | `openai/gpt-5.6-luna` | 0.20 | 1.20 |
+| answer | `openai/gpt-5.6-luna-pro` | 0.20 | 1.20 |
 | reasoning | `google/gemini-3.7-flash` | 0.375 | 1.875 |
 | baseline مقایسه | `anthropic/claude-opus-5` | 5.00 | 25.00 |
 | embedding | `intfloat/multilingual-e5-large` | — | — |
 
 `deepseek-v4-flash`: context **1,048,576** و max completion 384,000.
-`gpt-5.6-luna`: context **1,050,000** و max completion 128,000.
+`gpt-5.6-luna-pro`: context **1,050,000** و max completion 128,000.
 `gemini-3.7-flash`: context **1,048,576**، max completion 65,536 و
 `input_cache_read` ده برابر ارزان‌تر از prompt عادی.
 
@@ -70,7 +70,7 @@ databases: small-g2 486.11 │ medium-g2 833.33 │ ir-small 972.22 │ standard
 `structured_outputs`، `max_tokens`، `reasoning`، `reasoning_effort` و
 `include_reasoning` را در کاتالوگ workspace اعلام می‌کنند.
 
-بودجهٔ runtime نیز زنده تأیید شد: DeepSeek router با `reasoning:none`، Luna با
+بودجهٔ runtime نیز زنده تأیید شد: DeepSeek router با `reasoning:none`، Luna Pro با
 `none/low` و Gemini با `medium` همگی HTTP 200 و tool call معتبر برگرداندند.
 سقف خروجی برنامه به‌ترتیب 256 برای router و 1,600/2,400/4,096 برای Level 1/2/3 است.
 
@@ -99,7 +99,7 @@ tool calling با prompt فارسی در اولین تست کار کرد: `finis
 | مدل | نقش | ورودی $/1M | خروجی $/1M | tools |
 |---|---|---|---|---|
 | `deepseek/deepseek-v4-flash` | router | 0.0826 | 0.1652 | ✅ |
-| `openai/gpt-5.6-luna` | answer | 0.200 | 1.200 | ✅ |
+| `openai/gpt-5.6-luna-pro` | answer | 0.200 | 1.200 | ✅ |
 | `google/gemini-3.7-flash` | reasoning | 0.375 | 1.875 | ✅ |
 | `anthropic/claude-opus-5` | baseline مقایسه | 5.000 | 25.000 | ✅ |
 | `intfloat/multilingual-e5-large` | embedding | 0.000 | 0.000 | — |

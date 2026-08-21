@@ -46,6 +46,8 @@ function shortModel(model: string): string {
   if (model.endsWith("deepseek/deepseek-v4-flash")) {
     return "DeepSeek V4 Flash";
   }
+  if (model.endsWith("openai/gpt-5.6-luna-pro")) return "GPT-5.6 Luna Pro";
+  // Keep previously saved conversations readable after the production switch.
   if (model.endsWith("openai/gpt-5.6-luna")) return "GPT-5.6 Luna";
   if (model.endsWith("google/gemini-3.7-flash")) return "Gemini 3.7 Flash";
   if (model.endsWith("anthropic/claude-opus-5")) return "Claude Opus 5";

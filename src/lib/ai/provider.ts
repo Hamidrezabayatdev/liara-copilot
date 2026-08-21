@@ -212,7 +212,7 @@ function requireEnv(name: string): string {
  */
 export const DEFAULT_MODELS = {
   router: 'deepseek/deepseek-v4-flash',
-  answer: 'openai/gpt-5.6-luna',
+  answer: 'openai/gpt-5.6-luna-pro',
   reason: 'google/gemini-3.7-flash',
   baseline: 'anthropic/claude-opus-5',
   embed: 'intfloat/multilingual-e5-large',

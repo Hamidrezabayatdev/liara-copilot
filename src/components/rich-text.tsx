@@ -15,10 +15,10 @@ export type RichTextProps = {
 
 const STREAM_ANIMATION = {
   animation: "blurIn" as const,
-  duration: 260,
+  duration: 420,
   easing: "cubic-bezier(0.16, 1, 0.3, 1)",
   sep: "word" as const,
-  stagger: 9,
+  stagger: 10,
 };
 
 const MARKDOWN_CONTROLS = {

@@ -121,8 +121,8 @@ search is enabled with a prebuilt E5 index only when BM25 confidence is low.
 The code still defaults safely to BM25 when the feature flag or index is absent.
 
 ## 4. Level routing
-- **L1** trivial → `openai/gpt-5.6-luna`, docs tools only, `stepCountIs(2)`
-- **L2** contextual → `openai/gpt-5.6-luna` + read tools, `stepCountIs(5)`
+- **L1** trivial → `openai/gpt-5.6-luna-pro`, docs tools only, `stepCountIs(2)`
+- **L2** contextual → `openai/gpt-5.6-luna-pro` + read tools, `stepCountIs(5)`
 - **L3** troubleshooting → `google/gemini-3.7-flash`, read + gated writes, `stepCountIs(12)`
 
 The fallback router is one `deepseek/deepseek-v4-flash` call returning

@@ -6,6 +6,7 @@ const {
   completedUsefulToolInSteps,
   GENERATION_BUDGETS,
   narrowToolsForRequest,
+  STREAM_SMOOTHING,
   textOnlyMessageHistory,
   usefulToolOutput,
 } = (await import(new URL('agent.ts', import.meta.url).href)) as typeof import('./agent');
@@ -152,6 +153,13 @@ test('every agent tier has an explicit bounded reasoning budget', () => {
     1: { reasoning: 'none', maxOutputTokens: 1_600 },
     2: { reasoning: 'low', maxOutputTokens: 2_400 },
     3: { reasoning: 'medium', maxOutputTokens: 4_096 },
+  });
+});
+
+test('answer text is paced into readable word-sized stream updates', () => {
+  assert.deepEqual(STREAM_SMOOTHING, {
+    delayInMs: 30,
+    chunking: 'word',
   });
 });
 

@@ -12,7 +12,7 @@
 - برای دادهٔ واقعی، توکن کاربر فقط در cookie رمزنگاری‌شدهٔ `HttpOnly` با عمر
   هشت ساعت نگه‌داری می‌شود؛ هیچ credential در مرورگر، مدل یا log ذخیره نمی‌شود.
 - بین سه مسیر هزینه/کیفیت انتخاب می‌کند: DeepSeek V4 Flash برای routing،
-  GPT-5.6 Luna برای پاسخ، و Gemini 3.7 Flash فقط برای reasoning پیچیده.
+  GPT-5.6 Luna Pro برای پاسخ، و Gemini 3.7 Flash فقط برای reasoning پیچیده.
 - ابزارها بر اساس intent محدود می‌شوند. هیچ API عمومی یا `DELETE` وجود ندارد و
   هر write برگشت‌پذیر به diff، امضای HMAC و تأیید صریح همان کاربر نیاز دارد.
 - Markdown، code، table، لینک، منبع، مراحل ابزار و هزینه هنگام streaming با UI
@@ -72,7 +72,7 @@ CI همین مجموعه را روی هر push و pull request اجرا و trace
 ```text
 Persian streaming UI
   → deterministic-first intent router
-  → DeepSeek router / Luna answer / Gemini reason
+  → DeepSeek router / Luna Pro answer / Gemini reason
   → docs-only tools or an explicit Liara read/write capability set
        ├─ bundled official docs: BM25 → adaptive semantic RRF
        └─ allow-listed Liara management client

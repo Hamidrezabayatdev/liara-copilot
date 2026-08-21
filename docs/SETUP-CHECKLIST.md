@@ -23,7 +23,7 @@ token مشترک را قبول نمی‌کند.
 
 > پلن، دسترسی به مدل‌ها را محدود می‌کند. بعد از دریافت کلید، خودم با
 > `GET {LIARA_AI_BASE_URL}/models` بررسی می‌کنم که
-> `deepseek/deepseek-v4-flash`، `openai/gpt-5.6-luna` و
+> `deepseek/deepseek-v4-flash`، `openai/gpt-5.6-luna-pro` و
 > `google/gemini-3.7-flash` در پلن فعال باشند
 > و اگر نبودند، routing را روی نزدیک‌ترین مدل موجود تنظیم می‌کنم.
 

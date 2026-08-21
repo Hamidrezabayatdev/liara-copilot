@@ -3,6 +3,7 @@ import {
   createUIMessageStreamResponse,
   isToolUIPart,
   isStepCount,
+  smoothStream,
   streamText,
   toUIMessageStream,
   type InferUITools,
@@ -44,6 +45,12 @@ export const GENERATION_BUDGETS = {
   reasoning: 'none' | 'low' | 'medium';
   maxOutputTokens: number;
 }>;
+
+/** Pace fast provider bursts into a calm, readable word-by-word stream. */
+export const STREAM_SMOOTHING = {
+  delayInMs: 30,
+  chunking: 'word',
+} as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -292,6 +299,7 @@ export async function streamAgentResponse({
     experimental_toolApprovalSecret: approvalSecret(approvalScope),
     abortSignal,
     maxRetries: 1,
+    experimental_transform: smoothStream(STREAM_SMOOTHING),
     // The SDK default logs raw provider errors. Keep credentials and upstream
     // bodies out of server logs; the UI stream gets a fixed safe message below.
     onError: () => {
