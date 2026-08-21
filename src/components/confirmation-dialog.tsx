@@ -106,19 +106,25 @@ function ConfirmationDialog({
   const meta = RISK_META[risk];
   const RiskIcon = meta.icon;
 
-  React.useEffect(() => {
-    if (!open) setTyped("");
-  }, [open]);
-
   const typedOk = !requireTypedConfirmation || typed.trim() === target;
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) setTyped("");
+    onOpenChange(nextOpen);
+  };
 
   const cancel = () => {
     onCancel?.();
-    onOpenChange(false);
+    handleOpenChange(false);
+  };
+
+  const confirm = () => {
+    setTyped("");
+    onConfirm();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="max-w-xl"
         // Confirm must be a deliberate act: never the default-focused control.
@@ -161,7 +167,9 @@ function ConfirmationDialog({
             <p className="text-muted-foreground text-xs leading-6">{description}</p>
           ) : null}
 
-          {diff && diff.length > 0 ? <BeforeAfterDiff rows={diff} /> : null}
+          {diff && diff.length > 0 ? (
+            <BeforeAfterDiff rows={diff} maskValues />
+          ) : null}
 
           <div
             className={cn(
@@ -226,7 +234,7 @@ function ConfirmationDialog({
           <Button
             variant={risk === "destructive" ? "destructive" : "default"}
             size="sm"
-            onClick={onConfirm}
+            onClick={confirm}
             disabled={busy || !typedOk}
           >
             {busy ? <LoaderCircleIcon className="animate-spin" /> : null}

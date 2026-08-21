@@ -28,10 +28,14 @@ const TYPE_VARIANT: Record<
   A: "default",
   AAAA: "default",
   CNAME: "info",
+  ALIAS: "info",
   TXT: "muted",
+  SPF: "muted",
   MX: "warning",
   NS: "secondary",
   SRV: "secondary",
+  PTR: "secondary",
+  CAA: "warning",
 };
 
 export type DnsRecordsTableProps = {

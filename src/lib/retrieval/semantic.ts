@@ -47,7 +47,10 @@ function loadStore(): Promise<VectorStore | null> {
   if (storePromise) return storePromise;
   storePromise = (async () => {
     try {
-      const raw = await readFile(vectorStorePath(), 'utf8');
+      const raw = await readFile(
+        /* turbopackIgnore: true */ vectorStorePath(),
+        'utf8',
+      );
       const parsed = JSON.parse(raw) as VectorStore;
       if (!Array.isArray(parsed?.chunks) || parsed.chunks.length === 0) return null;
       if (parsed.model !== MODELS.embed() && !warned) {

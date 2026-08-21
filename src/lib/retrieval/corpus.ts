@@ -138,10 +138,18 @@ export function loadCorpus(dir?: string): Promise<Chunk[]> {
 
   const target = dir ?? corpusDir();
   const load = (async () => {
-    const names = (await readdir(target)).filter((n) => n.endsWith('.md')).sort();
+    const names = (await readdir(/* turbopackIgnore: true */ target))
+      .filter((n) => n.endsWith('.md'))
+      .sort();
     const all: Chunk[] = [];
     for (const name of names) {
-      const raw = await readFile(path.join(target, name), 'utf8');
+      const raw = await readFile(
+        /* turbopackIgnore: true */ path.join(
+          /* turbopackIgnore: true */ target,
+          name,
+        ),
+        'utf8',
+      );
       all.push(...parseFile(name, raw));
     }
     return all;

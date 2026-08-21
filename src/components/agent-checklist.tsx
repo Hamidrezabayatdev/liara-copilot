@@ -121,11 +121,13 @@ function AgentChecklist({
   dense = false,
   className,
 }: AgentChecklistProps) {
-  const done = steps.filter((s) => s.state === "done").length;
+  const completed = steps.filter(
+    (s) => s.state === "done" || s.state === "skipped",
+  ).length;
   const failed = steps.some((s) => s.state === "failed");
   const running = steps.some((s) => s.state === "running");
   const total = steps.length;
-  const progress = total === 0 ? 0 : (done / total) * 100;
+  const progress = total === 0 ? 0 : (completed / total) * 100;
 
   return (
     <section
@@ -160,7 +162,7 @@ function AgentChecklist({
         </div>
         <div className="text-muted-foreground shrink-0 pt-0.5 text-[0.6875rem] font-medium tabular-nums">
           <span dir="ltr" className="ltr-embed">
-            {done}/{total}
+            {completed}/{total}
           </span>
         </div>
       </header>

@@ -21,6 +21,19 @@ const KIND_MARK: Record<DiffKind, { icon: React.ReactNode; className: string }> 
   unchanged: { icon: null, className: "text-muted-foreground/50" },
 };
 
+const SECRET_KEY =
+  /(SECRET|PASSWORD|PASSWD|TOKEN|KEY|CREDENTIAL|PRIVATE|SALT|SIGNATURE|AUTH|DSN|URI|URL|CONNECTION_STRING)/i;
+const SECRET_VALUE =
+  /^(postgres|mysql|mongodb|redis|amqp|rediss)(\+srv)?:\/\/[^:]+:[^@]+@/i;
+
+function isSecretRow(row: DiffRow) {
+  return (
+    SECRET_KEY.test(row.label) ||
+    (row.before !== undefined && SECRET_VALUE.test(row.before)) ||
+    (row.after !== undefined && SECRET_VALUE.test(row.after))
+  );
+}
+
 export type BeforeAfterDiffProps = {
   rows: DiffRow[];
   /** Column headings; defaults to «فعلی» / «پس از تغییر». */
@@ -28,7 +41,7 @@ export type BeforeAfterDiffProps = {
   afterLabel?: string;
   /** Hide `unchanged` rows entirely. */
   changesOnly?: boolean;
-  /** Mask values whose label looks secret — used by the env flow. */
+  /** Mask secret-looking keys and credential-bearing URI values. */
   maskValues?: boolean;
   className?: string;
 };
@@ -143,9 +156,7 @@ function BeforeAfterDiff({
           <ul className="divide-border/50 divide-y">
             {visible.map((row, i) => {
               const mark = KIND_MARK[row.kind];
-              const masked =
-                maskValues &&
-                /pass|secret|token|key|dsn|url|credential/i.test(row.label);
+              const masked = maskValues && isSecretRow(row);
               return (
                 <li
                   key={`${row.label}-${i}`}

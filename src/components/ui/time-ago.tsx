@@ -26,10 +26,14 @@ function TimeAgo({ value, now, tickMs = 30_000, className, ...props }: TimeAgoPr
 
   React.useEffect(() => {
     if (now !== undefined) return;
-    setClientNow(Date.now());
-    if (!tickMs) return;
-    const id = setInterval(() => setClientNow(Date.now()), tickMs);
-    return () => clearInterval(id);
+    const update = () => setClientNow(Date.now());
+    const initialId = window.setTimeout(update, 0);
+    if (!tickMs) return () => window.clearTimeout(initialId);
+    const intervalId = window.setInterval(update, tickMs);
+    return () => {
+      window.clearTimeout(initialId);
+      window.clearInterval(intervalId);
+    };
   }, [now, tickMs]);
 
   const effectiveNow = now ?? clientNow;
