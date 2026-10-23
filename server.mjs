@@ -1,7 +1,7 @@
 import http from 'node:http';
 const port = Number(process.env.PORT || 3000);
-const revision = 'healthy-v1';
-const failure = false;
+const revision = 'invalid-config-v2';
+const failure = true;
 http.createServer((req, res) => {
   const health = req.url === '/api/health';
   const status = failure ? 500 : 200;
