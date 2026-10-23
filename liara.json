@@ -1,7 +1,5 @@
 {
-  "next": {
-    "mirror": false
-  },
+  "platform": "docker",
   "build": {
     "location": "germany"
   },
