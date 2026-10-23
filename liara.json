@@ -1,14 +1,1 @@
-{
-  "platform": "docker",
-  "build": {
-    "location": "germany"
-  },
-  "port": 3000,
-  "healthCheck": {
-    "command": "CMD curl --fail http://localhost:3000/api/health || exit 1",
-    "interval": 30000,
-    "timeout": 10000,
-    "retries": 2,
-    "startPeriod": 3000
-  }
-}
+{"platform":"docker","port":3000,"build":{"location":"germany"},"healthCheck":{"command":"node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"","initialDelaySeconds":5,"periodSeconds":15}}
